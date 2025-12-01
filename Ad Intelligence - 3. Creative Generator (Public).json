@@ -1,0 +1,1206 @@
+{
+  "name": "Ad Intelligence - 3. Creative Generator (Public)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "955b230a-45dd-4190-aaab-b29957358303",
+        "options": {}
+      },
+      "id": "9675b05e-963f-471c-aeeb-c8922157d81b",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2848,
+        288
+      ],
+      "webhookId": "955b230a-45dd-4190-aaab-b29957358303"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Brand_Guidelines",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "eeef889a-96bd-49aa-b5ed-0d8b283eeb3a",
+      "name": "Load Brand Guidelines",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -2496,
+        192
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get ad data directly from the workflow trigger\nconst adData = $('When Executed by Another Workflow').first().json;\n\n// Get brand guidelines and convert to object\nconst brandRows = $('Load Brand Guidelines').all().map(i => i.json);\nconst brand = {};\nbrandRows.forEach(row => {\n  const field = row.Field || row.field;\n  const value = row.Value || row.value;\n  if (field) {\n    brand[field.toLowerCase().replace(/\\s+/g, '_')] = value;\n  }\n});\n\n// Parse vision_json if it's a string\nlet visionJson = adData.vision_json;\nif (typeof visionJson === 'string' && visionJson) {\n  try {\n    visionJson = JSON.parse(visionJson);\n  } catch (e) {\n    console.log('Could not parse vision_json:', e.message);\n  }\n}\n\n// Parse marketing_insights if it's a string\nlet marketingInsights = adData.marketing_insights;\nif (typeof marketingInsights === 'string' && marketingInsights) {\n  try {\n    marketingInsights = JSON.parse(marketingInsights);\n  } catch (e) {\n    console.log('Could not parse marketing_insights:', e.message);\n  }\n}\n\nreturn [{\n  json: {\n    ...adData,\n    brand: brand,\n    vision_json: visionJson,\n    marketing_insights: marketingInsights\n  }\n}];"
+      },
+      "id": "872cc314-170b-40dc-8b8e-df9f42222a47",
+      "name": "Merge Ad + Brand Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2256,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Merge Ad + Brand Data').first().json;\n\n// Parse vision JSON if it's a string\nlet visionData = data.vision_json;\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    visionData = {};\n  }\n}\n\n// Parse marketing insights if available\nlet marketingInsights = data.marketing_insights;\nif (typeof marketingInsights === 'string') {\n  try {\n    marketingInsights = JSON.parse(marketingInsights);\n  } catch (e) {\n    marketingInsights = {};\n  }\n}\n\nconst brand = data.brand || {};\n\nconst prompt = `You are an expert ad creative strategist. Analyze this competitor ad and create a Big Players branded version.\n\n## COMPETITOR AD ANALYSIS (JSON):\n${JSON.stringify(visionData, null, 2)}\n\n## COMPETITOR MARKETING INSIGHTS:\n${JSON.stringify(marketingInsights, null, 2)}\n\n## COMPETITOR AD COPY:\n${data.body_text || 'No text available'}\n\n## BIG PLAYERS BRAND GUIDELINES:\n- Brand Name: ${brand.brand_name || 'Big Players'}\n- Tagline: ${brand.tagline || 'Stealing billion-dollar growth strategies so you don\\'t have to'}\n- Primary Color: ${brand.primary_color || '#EC4899'} (pink/magenta)\n- Secondary Color: ${brand.secondary_color || '#1F2937'} (dark gray)\n- Accent Color: ${brand.accent_color || '#10B981'} (emerald green)\n- Voice: ${brand.voice || 'Direct, tactical, proof-driven'}\n- Target Audience: ${brand.target_audience || 'Skeptical founders and heads of growth at early-stage companies'}\n- Forbidden Words: ${brand.forbidden_words || 'game-changer, revolutionary, guru, unlock, unleash'}\n\n## YOUR TASK:\nCreate a Big Players branded version of this ad. Output a JSON object with this EXACT structure:\n\n{\n  \"meta\": {\n    \"original_ad_id\": \"${data.ad_archive_id}\",\n    \"competitor\": \"${data.page_name}\",\n    \"generation_date\": \"${new Date().toISOString()}\",\n    \"brand\": \"Big Players\"\n  },\n  \"creative_brief\": {\n    \"objective\": \"string - what this ad aims to achieve\",\n    \"hook_strategy\": \"string - how we grab attention\",\n    \"value_proposition\": \"string - core benefit we're offering\",\n    \"cta_strategy\": \"string - what action we want\"\n  },\n  \"copy\": {\n    \"headline\": {\n      \"text\": \"string - primary headline (max 10 words)\",\n      \"rationale\": \"string - why this works\"\n    },\n    \"subheadline\": {\n      \"text\": \"string - supporting headline (max 15 words)\",\n      \"rationale\": \"string - why this works\"  \n    },\n    \"body\": {\n      \"text\": \"string - main ad copy (2-3 sentences max)\",\n      \"rationale\": \"string - why this works\"\n    },\n    \"cta\": {\n      \"text\": \"string - call to action button text\",\n      \"rationale\": \"string - why this works\"\n    }\n  },\n  \"visual_direction\": {\n    \"layout\": \"string - describe the composition\",\n    \"focal_point\": \"string - what draws the eye first\",\n    \"color_usage\": {\n      \"background\": \"string - background color/treatment\",\n      \"text_colors\": \"string - how brand colors are used in text\",\n      \"accent_usage\": \"string - how accent color highlights key elements\"\n    },\n    \"typography\": {\n      \"headline_style\": \"string - bold, weight, size guidance\",\n      \"body_style\": \"string - readable, professional\"\n    },\n    \"mood\": \"string - overall feeling (e.g., confident, urgent, exclusive)\"\n  },\n  \"image_prompt\": {\n    \"full_prompt\": \"string - complete prompt for image generation\",\n    \"style_keywords\": [\"array\", \"of\", \"style\", \"keywords\"],\n    \"must_include\": [\"array\", \"of\", \"required\", \"elements\"],\n    \"must_avoid\": [\"array\", \"of\", \"things\", \"to\", \"avoid\"]\n  },\n  \"competitor_elements_adapted\": {\n    \"what_we_kept\": \"string - effective elements we're using\",\n    \"what_we_changed\": \"string - elements we improved or replaced\",\n    \"why\": \"string - strategic reasoning\"\n  }\n}\n\nIMPORTANT:\n- Write in Big Players voice: direct, tactical, proof-driven\n- NEVER use forbidden words\n- Headlines should be punchy and specific (use numbers, specifics)\n- The image_prompt.full_prompt should be detailed enough to generate a professional Facebook/Instagram ad\n- Output ONLY the JSON object, no additional text`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [\n    {\n      role: \"user\", \n      content: prompt\n    }\n  ],\n  max_tokens: 2000,\n  temperature: 0.7\n};\n\nreturn [{\n  json: {\n    ...data,\n    copy_request_body: requestBody\n  }\n}];"
+      },
+      "id": "fb3aed97-aaa2-44d0-97ee-4d90f194deb4",
+      "name": "Build Copy Generation Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2000,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.copy_request_body }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "03e82bec-46bc-489e-9345-5124a5a71813",
+      "name": "Generate Ad Copy",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1744,
+        192
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Build Copy Generation Request').first().json;\nconst response = items[0].json;\n\nlet generatedContent = {};\nlet headlines = '';\nlet bodyCopy = '';\nlet imagePrompt = '';\n\ntry {\n  let content = response.choices?.[0]?.message?.content || '';\n  \n  // Clean up markdown code blocks if present\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Parse the JSON response\n  generatedContent = JSON.parse(content);\n  \n  // Extract the key fields for backward compatibility with sheet columns\n  headlines = generatedContent.copy?.headline?.text || '';\n  if (generatedContent.copy?.subheadline?.text) {\n    headlines += ' | ' + generatedContent.copy.subheadline.text;\n  }\n  \n  bodyCopy = generatedContent.copy?.body?.text || '';\n  if (generatedContent.copy?.cta?.text) {\n    bodyCopy += '\\n\\nCTA: ' + generatedContent.copy.cta.text;\n  }\n  \n  imagePrompt = generatedContent.image_prompt?.full_prompt || '';\n  \n} catch (e) {\n  console.log('Error parsing generated content:', e.message);\n  // Fallback: treat as plain text\n  const content = response.choices?.[0]?.message?.content || '';\n  headlines = 'Parse error - check raw response';\n  bodyCopy = content.substring(0, 500);\n  imagePrompt = '';\n}\n\n// Clean up request body from previous data\nconst { copy_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    // Full structured JSON for reference\n    generated_creative_json: generatedContent,\n    // Individual fields for Google Sheets columns\n    generated_headlines: headlines,\n    generated_body_copy: bodyCopy,\n    generated_image_prompt: imagePrompt,\n    // Additional extracted data\n    generated_cta: generatedContent.copy?.cta?.text || '',\n    creative_brief: generatedContent.creative_brief || {},\n    visual_direction: generatedContent.visual_direction || {},\n    status: 'COPY_GENERATED'\n  }\n}];"
+      },
+      "id": "0f1624a1-94e5-4012-8daf-dfd3931fbffe",
+      "name": "Parse Generated Copy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Parse Generated Copy').first().json;\n\n// Parse vision_json if it's a string\nlet visionData = data.vision_json;\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    visionData = {};\n  }\n}\n\n// Get the rich image prompt from the generated creative JSON\nlet imagePrompt = '';\n\n// First priority: Use the detailed prompt from creative JSON\nif (data.generated_creative_json?.image_prompt?.full_prompt) {\n  imagePrompt = data.generated_creative_json.image_prompt.full_prompt;\n  \n  // Add the style keywords, must include, must avoid\n  const mustInclude = data.generated_creative_json.image_prompt.must_include || [];\n  const mustAvoid = data.generated_creative_json.image_prompt.must_avoid || [];\n  const styleKeywords = data.generated_creative_json.image_prompt.style_keywords || [];\n  \n  if (mustInclude.length > 0) {\n    imagePrompt += `\\n\\nMUST INCLUDE: ${mustInclude.join(', ')}`;\n  }\n  if (mustAvoid.length > 0) {\n    imagePrompt += `\\n\\nMUST AVOID: ${mustAvoid.join(', ')}`;\n  }\n  if (styleKeywords.length > 0) {\n    imagePrompt += `\\n\\nSTYLE KEYWORDS: ${styleKeywords.join(', ')}`;\n  }\n  \n  // Add visual direction from generated creative\n  const visualDir = data.generated_creative_json?.visual_direction;\n  if (visualDir) {\n    imagePrompt += `\\n\\nVISUAL DIRECTION:`;\n    if (visualDir.layout) imagePrompt += `\\n- Layout: ${visualDir.layout}`;\n    if (visualDir.focal_point) imagePrompt += `\\n- Focal Point: ${visualDir.focal_point}`;\n    if (visualDir.mood) imagePrompt += `\\n- Mood: ${visualDir.mood}`;\n    if (visualDir.color_usage?.background) imagePrompt += `\\n- Background: ${visualDir.color_usage.background}`;\n    if (visualDir.typography?.headline_style) imagePrompt += `\\n- Headline Style: ${visualDir.typography.headline_style}`;\n  }\n  \n} else {\n  // Fallback to basic prompt building\n  const brand = data.brand || {};\n  const headline = data.generated_creative_json?.copy?.headline?.text || \n                   data.generated_headlines?.split('|')[0]?.trim() || \n                   'Stealing billion-dollar growth strategies';\n  \n  // Use competitor ad style indicators if available\n  const adStyle = visionData?.ad_style_indicators || {};\n  let styleNotes = [];\n  if (adStyle.appears_ugc) styleNotes.push('UGC-style, authentic look');\n  if (adStyle.has_social_proof) styleNotes.push('include social proof elements');\n  \n  imagePrompt = `Create a professional Facebook/Instagram ad image.\n\nBRAND STYLE:\n- Primary Color: ${brand.primary_color || '#EC4899'} (pink/magenta)\n- Secondary Color: ${brand.secondary_color || '#1F2937'} (dark gray)  \n- Accent Color: ${brand.accent_color || '#10B981'} (emerald green)\n- Tone: Direct, tactical, professional\n\nCOMPETITOR AD COMPOSITION TO REFERENCE:\n- Layout: ${visionData?.composition?.layout || 'Centered'}\n- Focal Point: ${visionData?.composition?.focal_point || 'Headline text'}\n- Mood: ${visionData?.global_context?.mood || 'Professional'}\n- Contrast: ${visionData?.color_palette?.contrast_level || 'High'}\n${styleNotes.length > 0 ? `- Style Notes: ${styleNotes.join(', ')}` : ''}\n\nHEADLINE TO FEATURE:\n\"${headline}\"\n\nCREATE:\nA scroll-stopping ad image that would perform well on Facebook/Instagram. Modern, clean design with bold typography. The brand colors should be prominent. Make it look like a high-converting performance marketing ad, not generic stock imagery.\n\nApply Big Players brand colors while maintaining the visual impact and composition style of the competitor ad.`;\n}\n\nreturn [{\n  json: {\n    ...data,\n    generated_image_prompt: imagePrompt\n  }\n}];"
+      },
+      "id": "bccc73ea-8562-4eec-a8d2-fc7c1055f461",
+      "name": "Build Image Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Build Image Prompt').first().json;\n\n// Determine aspect ratio from competitor ad's vision analysis\nlet aspectRatio = \"4:5\"; // Default for Facebook/Instagram feed\nlet resolution = \"2K\";\n\n// Check vision_json for the original ad's format\nlet visionData = prevData.vision_json;\n\n// Parse if it's a string\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    console.log('Could not parse vision_json');\n    visionData = {};\n  }\n}\n\nif (visionData?.meta?.ad_format) {\n  const format = visionData.meta.ad_format.toLowerCase();\n  \n  // Check for vertical/story formats -> 9:16\n  if (format.includes('vertical') || \n      format.includes('story') || \n      format.includes('portrait') || \n      format.includes('9:16') ||\n      format.includes('reel')) {\n    aspectRatio = \"9:16\";\n  } \n  // Check for square formats -> 1:1\n  else if (format.includes('square') || format.includes('1:1')) {\n    aspectRatio = \"1:1\";\n  } \n  // Check for landscape/horizontal formats -> 16:9\n  else if (format.includes('landscape') || \n           format.includes('horizontal') || \n           format.includes('16:9') ||\n           format.includes('banner')) {\n    aspectRatio = \"16:9\";\n  }\n  // Check for feed formats -> 4:5\n  else if (format.includes('feed') || format.includes('4:5')) {\n    aspectRatio = \"4:5\";\n  }\n}\n\n// Also check composition layout as a backup\nif (aspectRatio === \"4:5\" && visionData?.composition?.layout) {\n  const layout = visionData.composition.layout.toLowerCase();\n  if (layout.includes('vertical')) {\n    aspectRatio = \"9:16\";\n  } else if (layout.includes('horizontal')) {\n    aspectRatio = \"16:9\";\n  }\n}\n\nconst imagePrompt = prevData.generated_image_prompt;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  modalities: [\"image\", \"text\"],\n  messages: [\n    {\n      role: \"user\",\n      content: imagePrompt\n    }\n  ],\n  max_tokens: 4096,\n  extra_body: {\n    aspect_ratio: aspectRatio,\n    resolution: resolution\n  }\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    requested_aspect_ratio: aspectRatio,\n    requested_resolution: resolution,\n    detected_format: visionData?.meta?.ad_format || 'unknown'\n  }\n}];"
+      },
+      "id": "710e6594-3928-457d-886c-e37b55ebbcd0",
+      "name": "Build Image Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.image_request_body }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "77b8d01b-fd38-4293-ad25-3196553dbd4e",
+      "name": "Generate Image (NanaBanana Pro)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -752,
+        192
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // OpenRouter returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  \n  if (Array.isArray(images) && images.length > 0) {\n    // Get the first image\n    const firstImage = images[0];\n    \n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      \n      // Check if it's a data URL (base64)\n      if (dataUrl.startsWith('data:image/')) {\n        // Extract the base64 part after the comma\n        const base64Part = dataUrl.split(',')[1];\n        if (base64Part) {\n          imageBase64 = base64Part;\n        }\n      } else if (dataUrl.startsWith('http')) {\n        // It's a regular URL\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Debug logging\n  console.log('Found images array:', !!images);\n  console.log('Images count:', images?.length || 0);\n  console.log('Base64 starts with:', imageBase64.substring(0, 20));\n  \n} catch (e) {\n  console.log('Error parsing image response:', e.message);\n}\n\n// Clean up request bodies from previous data\nconst { image_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    image_generation_complete: true,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED',\n    image_format: 'jpeg'\n  }\n}];"
+      },
+      "id": "217e1fa6-8ee9-4f9c-b288-196c49b775ae",
+      "name": "Parse Image Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.generated_image_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "id": "d5952faf-5d72-4218-8465-2f2ea5425f5b"
+            },
+            {
+              "leftValue": "={{ $json.generated_image_base64 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "id": "f3ebf833-992f-4933-bcf5-fc66d674c3d3"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "7dbb19e5-06bb-4e98-940f-c7e0e1994c68",
+      "name": "Check Image Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n\n// Create filename\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst adId = data.ad_archive_id || 'unknown';\n\n// If we have base64, prepare binary\nif (data.generated_image_base64) {\n  let base64Data = data.generated_image_base64;\n  \n  // Remove data URL prefix if somehow still present\n  if (base64Data.includes(',')) {\n    base64Data = base64Data.split(',')[1];\n  }\n  \n  // Remove any whitespace\n  base64Data = base64Data.replace(/\\s/g, '');\n  \n  // Detect image type from base64 header\n  let mimeType = 'image/jpeg';\n  let extension = 'jpg';\n  \n  if (base64Data.startsWith('/9j/')) {\n    mimeType = 'image/jpeg';\n    extension = 'jpg';\n  } else if (base64Data.startsWith('iVBORw')) {\n    mimeType = 'image/png';\n    extension = 'png';\n  }\n  \n  const filename = `ad_${adId}_${timestamp}.${extension}`;\n  \n  // Convert base64 to Buffer\n  const binaryBuffer = Buffer.from(base64Data, 'base64');\n  \n  // Use n8n's helper to create proper binary data\n  const binaryData = await this.helpers.prepareBinaryData(\n    binaryBuffer,\n    filename,\n    mimeType\n  );\n  \n  return [{\n    json: {\n      ...data,\n      filename: filename,\n      detected_mime_type: mimeType,\n      file_size_bytes: binaryBuffer.length\n    },\n    binary: {\n      data: binaryData\n    }\n  }];\n}\n\n// If no base64 data\nreturn [{\n  json: {\n    ...data,\n    filename: `ad_${adId}_${timestamp}.jpg`,\n    error: 'No base64 data found'\n  }\n}];"
+      },
+      "id": "904e7522-d3d1-4783-b6c1-dcc4e77df831",
+      "name": "Prepare for Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "name"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1lkrqmXwsQ__Orm7TrzY8gQi1amB6VMHV",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Scraping",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1lkrqmXwsQ__Orm7TrzY8gQi1amB6VMHV"
+        },
+        "options": {}
+      },
+      "id": "17d00357-28ea-425e-be2d-d0da8c916379",
+      "name": "Upload to Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        256,
+        80
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "c1lX68Ne53WW1ODn",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploadResult = items[0].json;\nconst prevData = $('Prepare for Upload').first().json;\n\n// Get the Drive file ID and construct URL\nconst fileId = uploadResult.id;\nconst driveUrl = fileId ? `https://drive.google.com/file/d/${fileId}/view` : '';\n\nreturn [{\n  json: {\n    ...prevData,\n    generated_image_url: driveUrl,\n    drive_file_id: fileId,\n    status: 'GENERATED'\n  }\n}];"
+      },
+      "id": "bf00915f-ecfb-4036-8429-cc82d5bcff63",
+      "name": "Get Shareable Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ad_archive_id": "={{ $('When Executed by Another Workflow').first().json.ad_archive_id }}",
+            "status": "={{ $json.status }}",
+            "generated_headlines": "={{ $json.generated_headlines }}",
+            "generated_body_copy": "={{ $json.generated_body_copy }}",
+            "generated_image_prompt": "={{ $json.generated_image_prompt }}",
+            "generated_image_url": "={{ $json.generated_image_url }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "ad_archive_id"
+          ],
+          "schema": [
+            {
+              "id": "ad_archive_id",
+              "displayName": "ad_archive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "page_id",
+              "displayName": "page_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_name",
+              "displayName": "page_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "run_duration_days",
+              "displayName": "run_duration_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "is_active",
+              "displayName": "is_active",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "collation_count",
+              "displayName": "collation_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "effectiveness_score",
+              "displayName": "effectiveness_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "body_text",
+              "displayName": "body_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_type",
+              "displayName": "cta_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "media_type",
+              "displayName": "media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_thumbnail_url",
+              "displayName": "video_thumbnail_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "creative_hash",
+              "displayName": "creative_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vision_json",
+              "displayName": "vision_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "marketing_insights",
+              "displayName": "marketing_insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_headlines",
+              "displayName": "generated_headlines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_body_copy",
+              "displayName": "generated_body_copy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_prompt",
+              "displayName": "generated_image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publisher_platforms",
+              "displayName": "publisher_platforms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "diff_status",
+              "displayName": "diff_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9bf4b0d2-1472-4f75-8385-d8bc2a71875d",
+      "name": "Update Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        752,
+        80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORKFLOW_4_WEBHOOK_URL || 'https://your-n8n-instance/webhook/ad-notifier' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "10eb746b-952a-47c9-a0df-ba32ee2b648b",
+      "name": "Trigger Notifier (Optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1008,
+        80
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "status",
+              "value": "COPY_ONLY",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "generated_image_url",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ddf9f13e-2a50-4c38-b8d2-4dbc4708ba60",
+      "name": "Skip - No Image Generated",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ad_archive_id": "={{ $json.ad_archive_id }}",
+            "status": "={{ $json.status }}",
+            "generated_headlines": "={{ $json.generated_headlines }}",
+            "generated_body_copy": "={{ $json.generated_body_copy }}",
+            "generated_image_prompt": "={{ $json.generated_image_prompt }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "ad_archive_id"
+          ],
+          "schema": [
+            {
+              "id": "ad_archive_id",
+              "displayName": "ad_archive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "page_id",
+              "displayName": "page_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_name",
+              "displayName": "page_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "run_duration_days",
+              "displayName": "run_duration_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "is_active",
+              "displayName": "is_active",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "collation_count",
+              "displayName": "collation_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "effectiveness_score",
+              "displayName": "effectiveness_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "body_text",
+              "displayName": "body_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_type",
+              "displayName": "cta_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "media_type",
+              "displayName": "media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_thumbnail_url",
+              "displayName": "video_thumbnail_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "creative_hash",
+              "displayName": "creative_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vision_json",
+              "displayName": "vision_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "marketing_insights",
+              "displayName": "marketing_insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_headlines",
+              "displayName": "generated_headlines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_body_copy",
+              "displayName": "generated_body_copy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_prompt",
+              "displayName": "generated_image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "publisher_platforms",
+              "displayName": "publisher_platforms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "diff_status",
+              "displayName": "diff_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3a65b3f3-bec0-4b6d-97a5-6a72c0f36a75",
+      "name": "Update Sheet - Copy Only",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        256,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2848,
+        48
+      ],
+      "id": "c56d02b7-be68-4b38-9d91-c70c272ff8ba",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Brand Guidelines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Brand Guidelines": {
+      "main": [
+        [
+          {
+            "node": "Merge Ad + Brand Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Ad + Brand Data": {
+      "main": [
+        [
+          {
+            "node": "Build Copy Generation Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Copy Generation Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Ad Copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Ad Copy": {
+      "main": [
+        [
+          {
+            "node": "Parse Generated Copy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Generated Copy": {
+      "main": [
+        [
+          {
+            "node": "Build Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Build Image Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Request": {
+      "main": [
+        [
+          {
+            "node": "Generate Image (NanaBanana Pro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image (NanaBanana Pro)": {
+      "main": [
+        [
+          {
+            "node": "Parse Image Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Image Response": {
+      "main": [
+        [
+          {
+            "node": "Check Image Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Image Result": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Upload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip - No Image Generated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Upload": {
+      "main": [
+        [
+          {
+            "node": "Upload to Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Get Shareable Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Shareable Link": {
+      "main": [
+        [
+          {
+            "node": "Update Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Trigger Notifier (Optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip - No Image Generated": {
+      "main": [
+        [
+          {
+            "node": "Update Sheet - Copy Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Load Brand Guidelines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "03eb08ce-0f4e-42ed-a7f2-56481e3f3bbc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
+  },
+  "id": "eQzgw4yE2HHwmaMX",
+  "tags": []
+}

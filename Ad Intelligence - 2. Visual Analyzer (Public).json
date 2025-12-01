@@ -1,0 +1,857 @@
+{
+  "name": "Ad Intelligence - 2. Visual Analyzer (Public)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "7844fd79-e5d4-41e3-8554-1223c3db3018",
+        "options": {}
+      },
+      "id": "60e4233f-26f9-417f-a73e-19cd4742970a",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -416,
+        224
+      ],
+      "webhookId": "7844fd79-e5d4-41e3-8554-1223c3db3018"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "combinator": "or",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.image_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.video_thumbnail_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da09f08f-d24e-4812-865e-54d8cfdf9b69",
+      "name": "Check for Image URL",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -48,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "analysis_image_url",
+              "value": "={{ $json.image_url || $json.video_thumbnail_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "37b15c23-48a2-446e-9430-4356f7e983f9",
+      "name": "Prepare Image URL",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.analysis_image_url }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "image_data"
+            }
+          }
+        }
+      },
+      "id": "8d7f04ed-af14-443f-a8d9-c7204346413c",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the image binary data\nconst imageData = items[0].binary?.image_data;\nconst adData = items[0].json;\n\nif (!imageData) {\n  return [{\n    json: {\n      error: 'No image data available',\n      ...adData\n    }\n  }];\n}\n\n// VisionStruct prompt\nconst visionPrompt = `You are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Analyze this advertisement image and return ONLY a valid JSON object (no markdown, no backticks) with this structure:\n\n{\n  \"meta\": {\n    \"image_quality\": \"Low/Medium/High\",\n    \"image_type\": \"Photo/Illustration/Screenshot/etc\",\n    \"ad_format\": \"Static/Carousel/Video Thumbnail\"\n  },\n  \"global_context\": {\n    \"scene_description\": \"Comprehensive description of the ad\",\n    \"mood\": \"Professional/Casual/Urgent/Aspirational\",\n    \"lighting\": {\n      \"source\": \"Natural/Studio/Mixed\",\n      \"quality\": \"Hard/Soft/Diffused\"\n    }\n  },\n  \"color_palette\": {\n    \"dominant_colors\": [\"#HEX1\", \"#HEX2\"],\n    \"accent_colors\": [\"color names\"],\n    \"contrast_level\": \"High/Medium/Low\"\n  },\n  \"composition\": {\n    \"layout\": \"Centered/Rule of thirds/Split\",\n    \"focal_point\": \"Primary attention element\",\n    \"visual_hierarchy\": [\"First element\", \"Second element\"]\n  },\n  \"objects\": [\n    {\n      \"label\": \"Object name\",\n      \"category\": \"Person/Product/Icon/etc\",\n      \"location\": \"Center/Top-Left/etc\",\n      \"prominence\": \"Foreground/Background\",\n      \"details\": \"Notable visual details\"\n    }\n  ],\n  \"text_ocr\": {\n    \"headline\": \"Main headline text if visible\",\n    \"subheadline\": \"Secondary text if visible\",\n    \"cta_text\": \"Call to action text\",\n    \"other_text\": [\"Any other text visible\"]\n  },\n  \"brand_elements\": {\n    \"logo_visible\": true,\n    \"brand_colors_used\": true,\n    \"brand_placement\": \"Top-right/Bottom/etc\"\n  },\n  \"ad_style_indicators\": {\n    \"appears_ugc\": false,\n    \"has_testimonial\": false,\n    \"has_before_after\": false,\n    \"has_price_anchor\": false,\n    \"has_social_proof\": false,\n    \"has_urgency\": false,\n    \"has_product_demo\": false\n  }\n}\n\nAnalyze the image thoroughly and return ONLY the JSON.`;\n\n// Build OpenRouter request with image\nconst requestBody = {\n  model: 'google/gemini-3-pro-preview',  // <-- CHANGE MODEL HERE\n  messages: [\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'text',\n          text: visionPrompt\n        },\n        {\n          type: 'image_url',\n          image_url: {\n            url: `data:${imageData.mimeType || 'image/jpeg'};base64,${imageData.data}`\n          }\n        }\n      ]\n    }\n  ],\n  temperature: 0.1,\n  max_tokens: 4096\n};\n\nreturn [{\n  json: {\n    ...adData,\n    gemini_request_body: JSON.stringify(requestBody)\n  }\n}];"
+      },
+      "id": "0a0c946f-fb47-4f9b-9558-fdb67dcc3431",
+      "name": "Build Gemini Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the ad data and OpenRouter/Gemini response\nconst adData = $('Build Gemini Request').first().json;\nconst geminiResponse = items[0].json;\n\n// Extract the text content from OpenRouter response format\nlet visionJson = {};\ntry {\n  // OpenRouter returns in choices[].message.content format\n  const textContent = geminiResponse.choices?.[0]?.message?.content || '';\n  \n  // Clean up the response - remove markdown code blocks if present\n  let cleanedText = textContent\n    .replace(/```json\\n?/g, '')\n    .replace(/```\\n?/g, '')\n    .trim();\n  \n  // Parse the JSON\n  visionJson = JSON.parse(cleanedText);\n} catch (e) {\n  visionJson = {\n    error: 'Failed to parse Gemini response',\n    raw_response: geminiResponse.choices?.[0]?.message?.content || 'No response'\n  };\n}\n\n// Remove the request body from output\nconst { gemini_request_body, ...cleanAdData } = adData;\n\nreturn [{\n  json: {\n    ...cleanAdData,\n    vision_json: JSON.stringify(visionJson),\n    vision_analysis_complete: true\n  }\n}];"
+      },
+      "id": "04277404-f6a1-4b6d-a542-3ea754d1e288",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const adData = items[0].json;\n\nconst marketingPrompt = `Analyze this Facebook ad and extract marketing patterns.\n\nAD COPY:\n${adData.body_text || 'No copy available'}\n\nCTA: ${adData.cta_type || 'Unknown'}\n\nVISUAL ANALYSIS:\n${adData.vision_json || '{}'}\n\nReturn ONLY this JSON structure (no markdown, no backticks):\n{\n  \"hook_type\": \"question|bold_claim|pain_point|social_proof|curiosity_gap|story\",\n  \"hook_analysis\": \"Why this hook works\",\n  \"angle\": \"testimonial_ugc|product_demo|comparison|lifestyle|educational|behind_scenes\",\n  \"angle_analysis\": \"How the angle is executed\",\n  \"offer_type\": \"discount|bundle|free_trial|limited_time|exclusive|none\",\n  \"funnel_stage\": \"TOFU|MOFU|BOFU\",\n  \"patterns_detected\": [\n    {\n      \"pattern\": \"pattern_name\",\n      \"confidence\": \"high|medium|low\",\n      \"evidence\": \"what indicates this pattern\"\n    }\n  ],\n  \"emotional_triggers\": [\"curiosity\", \"fomo\", \"aspiration\"],\n  \"target_audience_signals\": \"Who this ad appears to target\",\n  \"key_value_proposition\": \"Main benefit promised\",\n  \"effectiveness_factors\": [\"What makes this ad likely effective\"],\n  \"swipe_file_notes\": \"Key elements to learn from this ad\"\n}`;\n\nconst requestBody = {\n  model: 'anthropic/claude-sonnet-4.5',\n  messages: [\n    {\n      role: 'system',\n      content: 'You are a senior performance marketing analyst. Analyze ads and extract marketing patterns. Always respond with ONLY valid JSON, no markdown or explanation.'\n    },\n    {\n      role: 'user',\n      content: marketingPrompt\n    }\n  ],\n  temperature: 0.3,\n  max_tokens: 2000\n};\n\nreturn [{\n  json: {\n    ...adData,\n    marketing_request_body: JSON.stringify(requestBody)\n  }\n}];"
+      },
+      "id": "da3832a9-1106-4908-8deb-7c1f24716d58",
+      "name": "Build Marketing Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.marketing_request_body }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d37e7147-6eb4-4fd6-a0b0-f2ec6c09ad14",
+      "name": "Extract Marketing Patterns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1712,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the previous data and OpenRouter response\nconst prevData = $('Build Marketing Request').first().json;\nconst openRouterResponse = items[0].json;\n\n// Extract marketing insights\nlet marketingInsights = {};\ntry {\n  const content = openRouterResponse.choices?.[0]?.message?.content || '';\n  \n  // Clean up - remove markdown if present\n  let cleanedContent = content\n    .replace(/```json\\n?/g, '')\n    .replace(/```\\n?/g, '')\n    .trim();\n  \n  marketingInsights = JSON.parse(cleanedContent);\n} catch (e) {\n  marketingInsights = {\n    error: 'Failed to parse marketing analysis',\n    raw_response: openRouterResponse.choices?.[0]?.message?.content || 'No response'\n  };\n}\n\n// Remove request body from output\nconst { marketing_request_body, ...cleanPrevData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanPrevData,\n    marketing_insights: JSON.stringify(marketingInsights),\n    status: 'ANALYZED',\n    analysis_complete: true\n  }\n}];"
+      },
+      "id": "ac0226d1-2ea4-4eb8-9365-abab0080ba27",
+      "name": "Parse Marketing Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ad_archive_id": "={{ $json.ad_archive_id }}",
+            "vision_json": "={{ $json.vision_json }}",
+            "marketing_insights": "={{ $json.marketing_insights }}",
+            "status": "={{ $json.status }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "ad_archive_id"
+          ],
+          "schema": [
+            {
+              "id": "ad_archive_id",
+              "displayName": "ad_archive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "page_id",
+              "displayName": "page_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_name",
+              "displayName": "page_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "run_duration_days",
+              "displayName": "run_duration_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "is_active",
+              "displayName": "is_active",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "collation_count",
+              "displayName": "collation_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "effectiveness_score",
+              "displayName": "effectiveness_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "body_text",
+              "displayName": "body_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_type",
+              "displayName": "cta_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "media_type",
+              "displayName": "media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "video_thumbnail_url",
+              "displayName": "video_thumbnail_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "creative_hash",
+              "displayName": "creative_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vision_json",
+              "displayName": "vision_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "marketing_insights",
+              "displayName": "marketing_insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_headlines",
+              "displayName": "generated_headlines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_body_copy",
+              "displayName": "generated_body_copy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_image_prompt",
+              "displayName": "generated_image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "publisher_platforms",
+              "displayName": "publisher_platforms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "diff_status",
+              "displayName": "diff_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "776b5999-0944-4f88-920c-b6d5a4d7e848",
+      "name": "Update Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2208,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WORKFLOW_3_WEBHOOK_URL || 'https://your-n8n-instance/webhook/creative-generator' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "0ae81379-035c-4082-9a3b-27426fd47a6b",
+      "name": "Trigger Creative Generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2672,
+        0
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "status",
+              "value": "SKIPPED_NO_IMAGE",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "vision_json",
+              "value": "{\"error\": \"No image URL available\"}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "marketing_insights",
+              "value": "{\"error\": \"No image to analyze\"}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "58dbe5c4-82b4-4e2c-83f5-948789b219c9",
+      "name": "Skip - No Image",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ad_archive_id": "={{ $json.ad_archive_id }}",
+            "status": "={{ $json.status }}",
+            "vision_json": "={{ $json.vision_json }}",
+            "marketing_insights": "={{ $json.marketing_insights }}"
+          },
+          "matchingColumns": [
+            "ad_archive_id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "1f7be35e-da33-404b-9b57-2ab880507dd5",
+      "name": "Update Sheet - Skipped",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        464,
+        208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.gemini_request_body }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "5d34cb5d-e415-4560-ba6f-711647212f3e",
+      "name": "Gemini Vision Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        -160
+      ],
+      "id": "deb65b38-1009-49f7-b542-b062d53ec175",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "G6D2iH8PqpHquiG2",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/G6D2iH8PqpHquiG2",
+          "cachedResultName": "Ad Intelligence - 3. Creative Generator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2416,
+        0
+      ],
+      "id": "3a7e496a-828c-4992-a37f-a705e1bd6063",
+      "name": "Call 'Ad Intelligence - 3. Creative Generator'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check for Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Image URL": {
+      "main": [
+        [
+          {
+            "node": "Prepare Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip - No Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image URL": {
+      "main": [
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "Gemini Vision Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Build Marketing Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Marketing Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Marketing Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Marketing Patterns": {
+      "main": [
+        [
+          {
+            "node": "Parse Marketing Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Marketing Analysis": {
+      "main": [
+        [
+          {
+            "node": "Update Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Google Sheet": {
+      "main": [
+        [
+          {
+            "node": "Call 'Ad Intelligence - 3. Creative Generator'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip - No Image": {
+      "main": [
+        [
+          {
+            "node": "Update Sheet - Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Vision Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Check for Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Ad Intelligence - 3. Creative Generator'": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ffe6b387-7002-4575-a3f4-b070ad14033b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
+  },
+  "id": "2p4Ngrk1EGgChlQg",
+  "tags": []
+}

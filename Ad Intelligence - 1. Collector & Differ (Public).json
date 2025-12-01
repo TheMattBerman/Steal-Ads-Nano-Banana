@@ -1,0 +1,659 @@
+{
+  "name": "Ad Intelligence - 1. Collector & Differ (Public)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                "monday"
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "24cd7755-160b-4cd9-afb1-bdacaf9b4e8e",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "882985cf-2c65-432e-8dcc-30c3b3adf8f2",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "competitor_page_id",
+              "value": "1440219672904565",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "competitor_name",
+              "value": "The Hustle",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "country",
+              "value": "US",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "ads_to_process",
+              "value": 25,
+              "type": "number"
+            },
+            {
+              "id": "5",
+              "name": "scrapecreators_api_key",
+              "value": "{insert your API key}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "723a32aa-679a-40d3-bc31-bebafed24ae0",
+      "name": "Config Settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.scrapecreators.com/v1/facebook/adLibrary/company/ads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "pageId",
+              "value": "={{ $json.competitor_page_id }}"
+            },
+            {
+              "name": "country",
+              "value": "={{ $json.country }}"
+            },
+            {
+              "name": "status",
+              "value": "ACTIVE"
+            },
+            {
+              "name": "media_type",
+              "value": "ALL"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $json.scrapecreators_api_key }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "5c4b2d96-0e03-4907-9b65-d334fb763bb6",
+      "name": "Fetch Competitor Ads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        512,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the API response\nconst response = items[0].json;\nconst ads = response.results || [];\n\nif (ads.length === 0) {\n  return [{ json: { error: 'No ads found', ads: [] } }];\n}\n\n// Simple hash function (since crypto module isn't available)\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return Math.abs(hash).toString(16);\n}\n\n// Calculate effectiveness score for each ad\nconst now = Date.now();\nconst processedAds = ads.map(ad => {\n  // Calculate run duration in days\n  const startDate = ad.start_date * 1000; // Convert to milliseconds\n  const runDurationDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));\n  \n  // Effectiveness score: 70% run duration + 30% collation count\n  const collationCount = ad.collation_count || 1;\n  const effectivenessScore = (runDurationDays * 0.7) + (collationCount * 10 * 0.3);\n  \n  // Get creative URLs\n  const snapshot = ad.snapshot || {};\n  const images = snapshot.images || [];\n  const videos = snapshot.videos || [];\n  \n  // Determine media type and get URLs\n  let imageUrl = '';\n  let videoUrl = '';\n  let videoThumbnailUrl = '';\n  \n  if (videos.length > 0) {\n    videoUrl = videos[0].video_sd_url || videos[0].video_hd_url || '';\n    videoThumbnailUrl = videos[0].video_preview_image_url || '';\n  }\n  if (images.length > 0) {\n    imageUrl = images[0] || '';\n  }\n  \n  // If no image URL but we have video thumbnail, use that\n  if (!imageUrl && videoThumbnailUrl) {\n    imageUrl = videoThumbnailUrl;\n  }\n  \n  // Create hash for change detection using simple hash function\n  const bodyText = snapshot.body?.text || snapshot.body || '';\n  const hashInput = bodyText + imageUrl + videoUrl;\n  const creativeHash = simpleHash(hashInput);\n  \n  return {\n    ad_archive_id: ad.ad_archive_id,\n    page_id: ad.page_id,\n    page_name: ad.page_name,\n    start_date: new Date(startDate).toISOString().split('T')[0],\n    end_date: ad.end_date ? new Date(ad.end_date * 1000).toISOString().split('T')[0] : '',\n    run_duration_days: runDurationDays,\n    is_active: ad.is_active,\n    collation_count: collationCount,\n    effectiveness_score: Math.round(effectivenessScore * 100) / 100,\n    body_text: bodyText,\n    cta_type: snapshot.cta_type || '',\n    media_type: snapshot.display_format || 'UNKNOWN',\n    image_url: imageUrl,\n    video_url: videoUrl,\n    video_thumbnail_url: videoThumbnailUrl,\n    creative_hash: creativeHash,\n    last_checked: new Date().toISOString(),\n    status: 'NEW',\n    publisher_platforms: (ad.publisher_platform || []).join(', ')\n  };\n});\n\n// Sort by effectiveness score (descending)\n// Filter to only ads WITH images, then take top 25\nconst topAds = processedAds\n  .filter(ad => ad.is_active)\n  .filter(ad => ad.image_url || ad.video_thumbnail_url) // Only ads with visuals\n  .sort((a, b) => b.effectiveness_score - a.effectiveness_score)\n  .slice(0, 25);\n\n// Log how many we found vs filtered\nconsole.log(`Found ${processedAds.length} total ads, ${topAds.length} with images`);\n\n// Return as individual items for further processing\nreturn topAds.map(ad => ({ json: ad }));"
+      },
+      "id": "fb84fd17-8360-480d-9adb-422ed1c0088d",
+      "name": "Calculate Effectiveness & Rank",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "8bd9310f-599e-4328-a808-d34a48a975d1",
+      "name": "Read Existing Ads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1008,
+        112
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get new ads from ScrapeCreators and existing ads from Google Sheets\nconst newAds = $('Calculate Effectiveness & Rank').all().map(i => i.json);\nconst existingAdsRaw = $('Read Existing Ads').all().map(i => i.json);\n\n// Build a map of existing ads by ad_archive_id\nconst existingAdsMap = new Map();\nexistingAdsRaw.forEach(ad => {\n  if (ad.ad_archive_id) {\n    existingAdsMap.set(ad.ad_archive_id.toString(), ad);\n  }\n});\n\n// Categorize ads\nconst results = [];\nlet newCount = 0;\nlet changedCount = 0;\nlet unchangedCount = 0;\n\nfor (const newAd of newAds) {\n  const adId = newAd.ad_archive_id?.toString();\n  if (!adId) continue;\n  \n  const existingAd = existingAdsMap.get(adId);\n  \n  if (!existingAd) {\n    // This is a NEW ad\n    newCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'NEW',\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else if (existingAd.creative_hash !== newAd.creative_hash) {\n    // This ad has CHANGED\n    changedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'CHANGED',\n        previous_hash: existingAd.creative_hash,\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else {\n    // Ad is UNCHANGED - still track it but don't reprocess\n    unchangedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'UNCHANGED',\n        status: existingAd.status || 'ANALYZED'\n      }\n    });\n  }\n}\n\n// Add summary as first item\nconst summary = {\n  json: {\n    summary: true,\n    total_ads_checked: newAds.length,\n    new_ads: newCount,\n    changed_ads: changedCount,\n    unchanged_ads: unchangedCount,\n    ads_to_process: newCount + changedCount,\n    timestamp: new Date().toISOString()\n  }\n};\n\nreturn [summary, ...results];"
+      },
+      "id": "2bd656df-9635-4b4a-9425-30966e9d6b01",
+      "name": "Identify New or Changed Ads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.diff_status }}",
+              "rightValue": "NEW",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "5085e5c8-112e-4e4a-a65f-63ec650017fb"
+            },
+            {
+              "leftValue": "={{ $json.diff_status }}",
+              "rightValue": "CHANGED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "402872ec-54ae-44cd-ab34-1df85a528a3b"
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "66940559-5c00-442e-bdf0-19e14d67a171",
+      "name": "Filter: Ads to Process",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1504,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "mode": "list",
+          "cachedResultName": "Big Players Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Competitor_Ads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "ad_archive_id"
+          ],
+          "schema": [
+            {
+              "id": "ad_archive_id",
+              "displayName": "ad_archive_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "page_id",
+              "displayName": "page_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "page_name",
+              "displayName": "page_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "run_duration_days",
+              "displayName": "run_duration_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_active",
+              "displayName": "is_active",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "collation_count",
+              "displayName": "collation_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "effectiveness_score",
+              "displayName": "effectiveness_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "body_text",
+              "displayName": "body_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cta_type",
+              "displayName": "cta_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "media_type",
+              "displayName": "media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_url",
+              "displayName": "image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_thumbnail_url",
+              "displayName": "video_thumbnail_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creative_hash",
+              "displayName": "creative_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_checked",
+              "displayName": "last_checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vision_json",
+              "displayName": "vision_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "marketing_insights",
+              "displayName": "marketing_insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_headlines",
+              "displayName": "generated_headlines",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_body_copy",
+              "displayName": "generated_body_copy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_prompt",
+              "displayName": "generated_image_prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publisher_platforms",
+              "displayName": "publisher_platforms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "diff_status",
+              "displayName": "diff_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "63fb484e-e0cf-41da-9da3-0ad18c60e677",
+      "name": "Update Tracking Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1760,
+        112
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "7rou2y9XeyGHdBO0",
+          "name": "Google Sheets account matthew@emerald"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Alsj9UaTkWoXGO1U",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Alsj9UaTkWoXGO1U",
+          "cachedResultName": "Ad Intelligence - 2. Visual Analyzer"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {}
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1984,
+        112
+      ],
+      "id": "748b42da-24ad-4309-8740-df27a4f05a19",
+      "name": "Call 'Ad Intelligence - 2. Visual Analyzer'"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Weekly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Config Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config Settings": {
+      "main": [
+        [
+          {
+            "node": "Fetch Competitor Ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Competitor Ads": {
+      "main": [
+        [
+          {
+            "node": "Calculate Effectiveness & Rank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Effectiveness & Rank": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Ads": {
+      "main": [
+        [
+          {
+            "node": "Identify New or Changed Ads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify New or Changed Ads": {
+      "main": [
+        [
+          {
+            "node": "Filter: Ads to Process",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: Ads to Process": {
+      "main": [
+        [
+          {
+            "node": "Update Tracking Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Tracking Sheet": {
+      "main": [
+        [
+          {
+            "node": "Call 'Ad Intelligence - 2. Visual Analyzer'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Ad Intelligence - 2. Visual Analyzer'": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1cc8d6c0-978c-48bf-8e2e-240ebf189436",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
+  },
+  "id": "2pYcomjkdWDkx9mx",
+  "tags": []
+}
