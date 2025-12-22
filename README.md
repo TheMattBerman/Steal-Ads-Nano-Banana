@@ -54,12 +54,14 @@ Competitor Facebook Ads → AI Analysis → Branded Creative Generation
 ## 🚀 Quick Start
 
 ### 1. Clone this repo
+
 ```bash
 git clone https://github.com/yourusername/ad-intelligence-system.git
 cd ad-intelligence-system
 ```
 
 ### 2. Import workflows into n8n
+
 1. Open your n8n instance
 2. Go to **Workflows** → **Import from File**
 3. Import each workflow JSON file in order:
@@ -69,20 +71,24 @@ cd ad-intelligence-system
    - `workflow-4-notifier.json` (optional)
 
 ### 3. Set up Google Sheets
+
 1. Create a new Google Sheet
 2. Create two tabs: `Competitor_Ads` and `Brand_Guidelines`
 3. Copy the column headers from [Google Sheets Setup](#-google-sheets-setup)
 
 ### 4. Configure credentials
+
 1. Set up each credential in n8n (see [API Keys Required](#-api-keys-required))
 2. Update the Google Sheets document ID in each workflow
 
 ### 5. Configure your target competitor
+
 1. Open Workflow 1
 2. Find the "Config Settings" node
 3. Update the `page_id` to your target competitor's Facebook Page ID
 
 ### 6. Activate and run!
+
 1. Activate all workflows
 2. Manually trigger Workflow 1 to test
 3. Watch the magic happen ✨
@@ -92,11 +98,13 @@ cd ad-intelligence-system
 ## 🔄 Workflow Overview
 
 ### Workflow 1: Ad Collector & Differ
+
 **Trigger:** Schedule (weekly) or Manual
 
 **Purpose:** Fetch competitor ads and identify new/changed ones
 
 **Key nodes:**
+
 - Fetch ads from ScrapeCreators API
 - Calculate effectiveness score
 - Compare against existing ads (hash-based diffing)
@@ -104,6 +112,7 @@ cd ad-intelligence-system
 - Trigger Workflow 2 for each new ad
 
 **Effectiveness Formula:**
+
 ```
 score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
 ```
@@ -111,11 +120,13 @@ score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
 ---
 
 ### Workflow 2: Visual Analyzer
+
 **Trigger:** Execute Sub-Workflow (from Workflow 1)
 
 **Purpose:** AI-powered deep analysis of ad creative
 
 **Key nodes:**
+
 - Download ad image
 - **Gemini 3 Pro Vision** - Analyzes image structure:
   - Image quality, format, composition
@@ -123,7 +134,7 @@ score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
   - Layout and visual hierarchy
   - Text/OCR extraction
   - Ad style indicators (UGC, testimonial, social proof)
-- **Claude Sonnet 4** - Analyzes marketing strategy:
+- **Claude Sonnet 4.5** - Analyzes marketing strategy:
   - Hook type and effectiveness
   - Angle (educational, emotional, etc.)
   - Patterns (urgency, social proof, identity targeting)
@@ -135,11 +146,13 @@ score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
 ---
 
 ### Workflow 3: Creative Generator
+
 **Trigger:** Execute Sub-Workflow (from Workflow 2)
 
 **Purpose:** Generate branded alternatives to competitor ads
 
 **Key nodes:**
+
 - Load brand guidelines from Google Sheets
 - Merge ad data with brand context
 - **Claude Sonnet 4.5** - Generates creative package:
@@ -158,11 +171,13 @@ score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
 ---
 
 ### Workflow 4: Notifier (Optional)
+
 **Trigger:** Execute Sub-Workflow (from Workflow 3)
 
 **Purpose:** Alert when new creative is ready
 
 **Key nodes:**
+
 - Send Slack notification
 - Include preview of generated creative
 
@@ -181,13 +196,13 @@ score = (runDurationDays × 0.7) + (collationCount × 10 × 0.3)
 
 In n8n, go to **Credentials** and create:
 
-| Credential Type | Name Suggestion | Used In |
-|----------------|-----------------|---------|
-| Header Auth | OpenRouter API | Workflows 2, 3 |
-| Header Auth | ScrapeCreators API | Workflow 1 |
-| OAuth2 | Google Sheets | All workflows |
-| OAuth2 | Google Drive | Workflow 3 |
-| OAuth2 | Slack (optional) | Workflow 4 |
+| Credential Type | Name Suggestion    | Used In        |
+| --------------- | ------------------ | -------------- |
+| Header Auth     | OpenRouter API     | Workflows 2, 3 |
+| Header Auth     | ScrapeCreators API | Workflow 1     |
+| OAuth2          | Google Sheets      | All workflows  |
+| OAuth2          | Google Drive       | Workflow 3     |
+| OAuth2          | Slack (optional)   | Workflow 4     |
 
 See [API Keys Required](#-api-keys-required) for details on each.
 
@@ -203,15 +218,17 @@ See [API Keys Required](#-api-keys-required) for details on each.
 ### Step 4: Update Competitor Target
 
 In Workflow 1, find the "Config Settings" node and update:
+
 ```javascript
 const config = {
-  competitor_page_id: "YOUR_COMPETITOR_PAGE_ID",  // Facebook Page ID
+  competitor_page_id: "YOUR_COMPETITOR_PAGE_ID", // Facebook Page ID
   competitor_name: "Competitor Name",
   // ... other settings
 };
 ```
 
 **How to find a Facebook Page ID:**
+
 1. Go to the competitor's Facebook page
 2. View page source or use a tool like [Find My FB ID](https://findmyfbid.com/)
 
@@ -219,15 +236,15 @@ const config = {
 
 In your Google Sheet's `Brand_Guidelines` tab, update the values to match your brand:
 
-| Field | Value |
-|-------|-------|
-| brand_name | Your Brand Name |
-| tagline | Your tagline |
-| primary_color | #EC4899 |
-| secondary_color | #1F2937 |
-| accent_color | #10B981 |
-| voice | Direct, tactical, proof-driven |
-| target_audience | Your target audience description |
+| Field           | Value                             |
+| --------------- | --------------------------------- |
+| brand_name      | Your Brand Name                   |
+| tagline         | Your tagline                      |
+| primary_color   | #EC4899                           |
+| secondary_color | #1F2937                           |
+| accent_color    | #10B981                           |
+| voice           | Direct, tactical, proof-driven    |
+| target_audience | Your target audience description  |
 | forbidden_words | game-changer, revolutionary, guru |
 
 ### Step 6: Test the System
@@ -246,55 +263,106 @@ In your Google Sheet's `Brand_Guidelines` tab, update the values to match your b
 
 Create these column headers in row 1:
 
-| Column | Header | Description |
-|--------|--------|-------------|
-| A | ad_archive_id | Unique ad identifier |
-| B | page_id | Facebook Page ID |
-| C | page_name | Competitor name |
-| D | start_date | When ad started running |
-| E | end_date | When ad stopped (if applicable) |
-| F | run_duration_days | Days the ad has been running |
-| G | is_active | Whether ad is currently active |
-| H | collation_count | Number of ad variations |
-| I | effectiveness_score | Calculated performance score |
-| J | body_text | Ad copy text |
-| K | cta_type | Call-to-action type |
-| L | media_type | Image, video, carousel |
-| M | image_url | URL to ad image |
-| N | video_url | URL to ad video (if applicable) |
-| O | video_thumbnail_url | Video thumbnail URL |
-| P | creative_hash | Hash for change detection |
-| Q | last_checked | Last time ad was processed |
-| R | status | Processing status |
-| S | vision_json | Gemini vision analysis (JSON) |
-| T | marketing_insights | Claude marketing analysis (JSON) |
-| U | generated_headlines | AI-generated headlines |
-| V | generated_body_copy | AI-generated body copy |
-| W | generated_image_prompt | Prompt used for image generation |
-| X | generated_image_url | Google Drive link to generated image |
+| Column | Header                          | Description                                                  |
+| ------ | ------------------------------- | ------------------------------------------------------------ |
+| A      | ad_archive_id                   | Unique ad identifier                                         |
+| B      | page_id                         | Facebook Page ID                                             |
+| C      | page_name                       | Competitor/Page name                                         |
+| D      | start_date                      | When ad started running                                      |
+| E      | end_date                        | When ad stopped (if applicable)                              |
+| F      | run_duration_days               | Days the ad has been running                                 |
+| G      | is_active                       | Whether ad is currently active                               |
+| H      | collation_count                 | Number of ad variations                                      |
+| I      | effectiveness_score             | Calculated performance score                                 |
+| J      | body_text                       | Ad copy text                                                 |
+| K      | cta_type                        | Call-to-action type                                          |
+| L      | media_type                      | Image, video, carousel, etc.                                 |
+| M      | image_url                       | URL to ad image                                              |
+| N      | video_url                       | URL to ad video (if applicable)                              |
+| O      | video_thumbnail_url             | Video thumbnail URL                                          |
+| P      | creative_hash                   | Hash for change detection                                    |
+| Q      | last_checked                    | Last time ad was processed                                   |
+| R      | status                          | Processing status                                            |
+| S      | vision_json                     | Gemini vision analysis (JSON)                                |
+| T      | marketing_insights              | Claude marketing analysis (JSON)                             |
+| U      | generated_headlines             | AI-generated headlines                                       |
+| V      | generated_body_copy             | AI-generated body copy                                       |
+| W      | generated_image_prompt          | Prompt used for image generation                             |
+| X      | generated_image_url             | Google Drive link to generated image                         |
+| Y      | publisher_platforms             | Platforms where ad was published (Facebook, Instagram, etc.) |
+| Z      | diff_status                     | Change status vs previous (added, removed, updated)          |
+| AA     | previous_hash                   | Hash of previous creative state                              |
+| AB     | psychology_primary_horseman     | Main emotion/horseman leveraged                              |
+| AC     | psychology_secondary_horseman   | Secondary emotion/horseman                                   |
+| AD     | psychology_value_score          | Overall ad psychology score (numeric)                        |
+| AE     | psychology_checkpoints_passed   | List of passed psychology checkpoints                        |
+| AF     | psychology_avg_checkpoint_score | Average score for all checkpoints                            |
+| AG     | psychology_hook_archetype       | Archetype for ad’s main hook                                 |
+| AH     | psychology_one_std_deviation    | 1 standard deviation value for checkpoint scores             |
+| AI     | generated_hook_full             | AI-generated hook, complete text                             |
+| AJ     | generated_hook_archetype        | AI-generated hook archetype                                  |
+| AK     | hook_type                       | Detected/assigned hook type                                  |
+| AL     | generated_primary_horseman      | AI-generated primary psychology horseman                     |
+| AM     | generated_contrast_mechanism    | AI-generated contrast mechanism description                  |
+| AN     | quality_passes_checkpoints      | Boolean, passes key creative/psych checkpoints               |
+| AO     | quality_scroll_stop_power       | Scroll-stopping power/rating (numeric or tag)                |
+| AP     | quality_conversion_potential    | Conversion potential (numeric or tag)                        |
+| AQ     | angle                           | Creative/marketing angle                                     |
+| AR     | funnel_stage                    | Upper, mid, or bottom of funnel                              |
+| AS     | swipe_file_notes                | Additional notes from competitive analysis                   |
+| AT     | generated_cta                   | AI-generated CTA                                             |
+| AU     | generated_data_point            | Key data proof generated by AI                               |
+| AV     | generated_hook_full             | Duplicate: consolidated full hook                            |
+| AW     | checkpoint_pain                 | Pain point checkpoint result                                 |
+| AX     | checkpoint_trust                | Trust checkpoint result                                      |
+| AY     | ad_concept_name                 | Name/label for this ad concept                               |
+| AZ     | layer_count                     | Number of image/design layers                                |
+| BA     | image_prompt_json               | Prompt JSON for image generation                             |
+| BB     | generated_image_url             | Google Drive/hosted generated image URL                      |
+| BC     | collation_id                    | Collation/group ID for similar ads                           |
+| BD     | cta_text                        | Actual ad CTA text                                           |
+| BE     | link_url                        | Destination link URL                                         |
+| BF     | link_description                | Description of destination link                              |
+| BG     | title                           | Ad/title headline                                            |
+| BH     | cards_count                     | # of card creatives (carousel)                               |
+| BI     | visual_concept                  | Main visual motif/concept summary                            |
+| BJ     | one_sentence_summary            | AI-generated or manual 1-sentence ad summary                 |
+| BK     | concept_ranking_score           | Overall concept/ad ranking score                             |
 
 ### Tab 2: Brand_Guidelines
 
 Create two columns - Field (A) and Value (B):
 
-| Field | Value (customize these) |
-|-------|------------------------|
-| brand_name | Your Brand |
-| tagline | Your tagline here |
-| primary_color | #EC4899 |
-| secondary_color | #1F2937 |
-| accent_color | #10B981 |
-| voice | Direct, tactical, proof-driven |
-| target_audience | Your target audience |
-| forbidden_words | game-changer, revolutionary, guru |
-| logo_url | https://your-logo-url.com/logo.png |
-| website | https://yourbrand.com |
+| Field                  | Value (customize these)                     |
+| ---------------------- | ------------------------------------------- |
+| brand_name             | Your Brand                                  |
+| tagline                | Your tagline here                           |
+| logo_url               | https://your-logo-url.com/logo.png          |
+| primary_color          | #EC4899                                     |
+| secondary_color        | #1F2937                                     |
+| accent_color           | #10B981                                     |
+| voice                  | Direct, tactical, proof-driven              |
+| voice_keywords         | tactical, proof, challenger                 |
+| target_audience        | Your target audience description            |
+| audience_persona       | Persona description (age, interests, needs) |
+| pain_points            | List of major pain points                   |
+| key_USPs               | Key value propositions                      |
+| content_pillars        | Education, Comparison, Social Proof         |
+| forbidden_words        | game-changer, revolutionary, guru           |
+| product_name           | Your Product Name                           |
+| website_url            | https://yourbrand.com                       |
+| example_headlines      | Headline 1; Headline 2; Headline 3          |
+| primary_font           | Inter                                       |
+| font_fallback          | Arial, sans-serif                           |
+| typography_tracking    | 0.01em                                      |
+| typography_line_height | 1.5                                         |
 
 ---
 
 ## 🔑 API Keys Required
 
 ### 1. OpenRouter API
+
 **Used for:** Claude Sonnet 4.5, Gemini 3 Pro Vision, NanaBanana Pro
 
 1. Sign up at [openrouter.ai](https://openrouter.ai)
@@ -305,11 +373,13 @@ Create two columns - Field (A) and Value (B):
    - Value: `Bearer YOUR_OPENROUTER_API_KEY`
 
 **Models used:**
+
 - `google/gemini-3-pro-preview` - Vision analysis
 - `anthropic/claude-sonnet-4` - Marketing analysis & creative generation
 - `google/gemini-3-pro-image-preview` - Image generation (NanaBanana Pro)
 
 ### 2. ScrapeCreators API
+
 **Used for:** Facebook Ad Library data
 
 1. Sign up at [scrapecreators.com](https://scrapecreators.com)
@@ -319,6 +389,7 @@ Create two columns - Field (A) and Value (B):
    - Value: `YOUR_SCRAPECREATORS_API_KEY`
 
 ### 3. Google OAuth2
+
 **Used for:** Google Sheets and Google Drive
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
@@ -329,6 +400,7 @@ Create two columns - Field (A) and Value (B):
 6. Complete the OAuth flow to authorize
 
 ### 4. Slack (Optional)
+
 **Used for:** Notifications in Workflow 4
 
 1. Create a Slack app at [api.slack.com](https://api.slack.com/apps)
@@ -365,6 +437,7 @@ const competitors = [
 ### Customize Brand Voice
 
 Update your `Brand_Guidelines` tab with:
+
 - Your brand colors (hex codes)
 - Your voice/tone description
 - Words to avoid
@@ -375,16 +448,18 @@ Update your `Brand_Guidelines` tab with:
 The system automatically detects the competitor's aspect ratio. To override:
 
 In Workflow 3's "Build Image Request" node, change:
+
 ```javascript
-let aspectRatio = "1:1";  // Force square
+let aspectRatio = "1:1"; // Force square
 // Options: "1:1", "4:5", "9:16", "16:9"
 ```
 
 ### Adjust Effectiveness Scoring
 
 In Workflow 1, modify the effectiveness formula:
+
 ```javascript
-const score = (runDurationDays * 0.7) + (collationCount * 10 * 0.3);
+const score = runDurationDays * 0.7 + collationCount * 10 * 0.3;
 ```
 
 Increase `runDurationDays` weight if you value longevity more.
@@ -397,12 +472,15 @@ Increase `collationCount` weight if you value active testing more.
 ### "Node 'X' hasn't been executed"
 
 This usually means you're referencing a node that isn't in the current execution path. Use:
+
 ```javascript
-$('When Executed by Another Workflow').first().json
+$("When Executed by Another Workflow").first().json;
 ```
+
 Instead of:
+
 ```javascript
-items[0].json
+items[0].json;
 ```
 
 ### Images not generating correctly
