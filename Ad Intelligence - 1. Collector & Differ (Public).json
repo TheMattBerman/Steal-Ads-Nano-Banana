@@ -1,5 +1,5 @@
 {
-  "name": "Ad Intelligence - 1. Collector & Differ (Public)",
+  "name": "Ad Intelligence - 1. Collector & Differ (Public V2)",
   "nodes": [
     {
       "parameters": {
@@ -15,7 +15,7 @@
           ]
         }
       },
-      "id": "24cd7755-160b-4cd9-afb1-bdacaf9b4e8e",
+      "id": "0a84d8c2-e581-40be-bfe9-96716eebc35e",
       "name": "Weekly Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -26,7 +26,7 @@
     },
     {
       "parameters": {},
-      "id": "882985cf-2c65-432e-8dcc-30c3b3adf8f2",
+      "id": "507bbcef-b564-4336-83ae-6e5fed390ed9",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -60,20 +60,20 @@
             {
               "id": "4",
               "name": "ads_to_process",
-              "value": 25,
+              "value": 100,
               "type": "number"
             },
             {
               "id": "5",
               "name": "scrapecreators_api_key",
-              "value": "{insert your API key}",
+              "value": "insert_your_api_key",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "723a32aa-679a-40d3-bc31-bebafed24ae0",
+      "id": "3c636dba-4061-4b1e-abf6-682ac2e288b8",
       "name": "Config Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -102,7 +102,7 @@
             },
             {
               "name": "media_type",
-              "value": "ALL"
+              "value": "IMAGE_AND_MEME"
             }
           ]
         },
@@ -123,7 +123,7 @@
           }
         }
       },
-      "id": "5c4b2d96-0e03-4907-9b65-d334fb763bb6",
+      "id": "1585bb60-371c-4f48-b9a9-86fedc591c4b",
       "name": "Fetch Competitor Ads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -134,9 +134,9 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get the API response\nconst response = items[0].json;\nconst ads = response.results || [];\n\nif (ads.length === 0) {\n  return [{ json: { error: 'No ads found', ads: [] } }];\n}\n\n// Simple hash function (since crypto module isn't available)\nfunction simpleHash(str) {\n  let hash = 0;\n  for (let i = 0; i < str.length; i++) {\n    const char = str.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32bit integer\n  }\n  return Math.abs(hash).toString(16);\n}\n\n// Calculate effectiveness score for each ad\nconst now = Date.now();\nconst processedAds = ads.map(ad => {\n  // Calculate run duration in days\n  const startDate = ad.start_date * 1000; // Convert to milliseconds\n  const runDurationDays = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));\n  \n  // Effectiveness score: 70% run duration + 30% collation count\n  const collationCount = ad.collation_count || 1;\n  const effectivenessScore = (runDurationDays * 0.7) + (collationCount * 10 * 0.3);\n  \n  // Get creative URLs\n  const snapshot = ad.snapshot || {};\n  const images = snapshot.images || [];\n  const videos = snapshot.videos || [];\n  \n  // Determine media type and get URLs\n  let imageUrl = '';\n  let videoUrl = '';\n  let videoThumbnailUrl = '';\n  \n  if (videos.length > 0) {\n    videoUrl = videos[0].video_sd_url || videos[0].video_hd_url || '';\n    videoThumbnailUrl = videos[0].video_preview_image_url || '';\n  }\n  if (images.length > 0) {\n    imageUrl = images[0] || '';\n  }\n  \n  // If no image URL but we have video thumbnail, use that\n  if (!imageUrl && videoThumbnailUrl) {\n    imageUrl = videoThumbnailUrl;\n  }\n  \n  // Create hash for change detection using simple hash function\n  const bodyText = snapshot.body?.text || snapshot.body || '';\n  const hashInput = bodyText + imageUrl + videoUrl;\n  const creativeHash = simpleHash(hashInput);\n  \n  return {\n    ad_archive_id: ad.ad_archive_id,\n    page_id: ad.page_id,\n    page_name: ad.page_name,\n    start_date: new Date(startDate).toISOString().split('T')[0],\n    end_date: ad.end_date ? new Date(ad.end_date * 1000).toISOString().split('T')[0] : '',\n    run_duration_days: runDurationDays,\n    is_active: ad.is_active,\n    collation_count: collationCount,\n    effectiveness_score: Math.round(effectivenessScore * 100) / 100,\n    body_text: bodyText,\n    cta_type: snapshot.cta_type || '',\n    media_type: snapshot.display_format || 'UNKNOWN',\n    image_url: imageUrl,\n    video_url: videoUrl,\n    video_thumbnail_url: videoThumbnailUrl,\n    creative_hash: creativeHash,\n    last_checked: new Date().toISOString(),\n    status: 'NEW',\n    publisher_platforms: (ad.publisher_platform || []).join(', ')\n  };\n});\n\n// Sort by effectiveness score (descending)\n// Filter to only ads WITH images, then take top 25\nconst topAds = processedAds\n  .filter(ad => ad.is_active)\n  .filter(ad => ad.image_url || ad.video_thumbnail_url) // Only ads with visuals\n  .sort((a, b) => b.effectiveness_score - a.effectiveness_score)\n  .slice(0, 25);\n\n// Log how many we found vs filtered\nconsole.log(`Found ${processedAds.length} total ads, ${topAds.length} with images`);\n\n// Return as individual items for further processing\nreturn topAds.map(ad => ({ json: ad }));"
+        "jsCode": "// =============================================================================\n// Calculate Effectiveness & Rank - V4 \n// Images are at ROOT level: results[0].original_image_url\n// =============================================================================\n\nconst response = items[0].json;\nconst ads = response.results || [];\n\nconsole.log(`Found ${ads.length} ads in response.results`);\n\nif (ads.length === 0) {\n  return [{ \n    json: { \n      error: 'No ads found in response.results', \n      response_keys: Object.keys(response)\n    } \n  }];\n}\n\n// Simple hash function\nfunction simpleHash(str) {\n  let hash = 0;\n  const s = String(str || '');\n  for (let i = 0; i < s.length; i++) {\n    const char = s.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(16);\n}\n\nconst now = Date.now();\n\nconst processedAds = ads.map((ad, index) => {\n  try {\n    const snapshot = ad.snapshot || {};\n    const cards = snapshot.cards || [];\n    \n    // Handle start_date (Unix timestamp in seconds)\n    let startDate = now - (30 * 24 * 60 * 60 * 1000);\n    if (ad.start_date) {\n      startDate = ad.start_date < 10000000000 ? ad.start_date * 1000 : ad.start_date;\n    }\n    \n    const runDurationDays = Math.max(1, Math.floor((now - startDate) / (1000 * 60 * 60 * 24)));\n    const collationCount = ad.collation_count || 1;\n    const effectivenessScore = (runDurationDays * 0.7) + (collationCount * 10 * 0.3);\n    \n    // === IMAGE EXTRACTION ===\n    // Priority 1: ROOT LEVEL of ad object (this is where your images are!)\n    let imageUrl = ad.original_image_url || ad.resized_image_url || '';\n    \n    // Priority 2: Inside snapshot directly\n    if (!imageUrl) {\n      imageUrl = snapshot.original_image_url || snapshot.resized_image_url || '';\n    }\n    \n    // Priority 3: Inside cards[]\n    if (!imageUrl && cards.length > 0) {\n      const firstCard = cards[0];\n      imageUrl = firstCard.original_image_url || firstCard.resized_image_url || '';\n    }\n    \n    // Priority 4: snapshot.images[]\n    if (!imageUrl && snapshot.images && snapshot.images.length > 0) {\n      const firstImage = snapshot.images[0];\n      imageUrl = typeof firstImage === 'string' ? firstImage : (firstImage.original_image_url || '');\n    }\n    \n    // === VIDEO ===\n    let videoUrl = ad.video_sd_url || ad.video_hd_url || '';\n    let videoThumbnailUrl = ad.video_preview_image_url || '';\n    \n    if (!videoUrl && snapshot.videos && snapshot.videos.length > 0) {\n      const firstVideo = snapshot.videos[0];\n      videoUrl = firstVideo.video_sd_url || firstVideo.video_hd_url || '';\n      videoThumbnailUrl = firstVideo.video_preview_image_url || '';\n    }\n    \n    // Use video thumbnail if no image\n    if (!imageUrl && videoThumbnailUrl) {\n      imageUrl = videoThumbnailUrl;\n    }\n    \n    // === BODY TEXT ===\n    let bodyText = '';\n    // Check cards first\n    if (cards.length > 0 && cards[0].body) {\n      bodyText = cards[0].body;\n    }\n    // Then snapshot.body\n    if (!bodyText && snapshot.body) {\n      bodyText = typeof snapshot.body === 'string' ? snapshot.body : (snapshot.body.text || '');\n    }\n    // Then root level\n    if (!bodyText) {\n      bodyText = ad.body || '';\n    }\n    \n    // === CTA ===\n    let ctaType = '';\n    let ctaText = '';\n    \n    if (cards.length > 0) {\n      ctaType = cards[0].cta_type || '';\n      ctaText = cards[0].cta_text || '';\n    }\n    if (!ctaType) ctaType = snapshot.cta_type || ad.cta_type || '';\n    if (!ctaText) ctaText = snapshot.cta_text || ad.cta_text || '';\n    \n    // === OTHER FIELDS ===\n    let linkUrl = '';\n    let linkDescription = '';\n    let title = '';\n    \n    if (cards.length > 0) {\n      linkUrl = cards[0].link_url || '';\n      linkDescription = cards[0].link_description || '';\n      title = cards[0].title || '';\n    }\n    \n    // Create hash\n    const hashInput = bodyText + imageUrl + videoUrl;\n    const creativeHash = simpleHash(hashInput);\n    \n    // Page info\n    const pageId = ad.page_id || snapshot.page_id || '';\n    const pageName = snapshot.page_name || ad.page_name || '';\n    \n    // End date\n    let endDateStr = '';\n    if (ad.end_date) {\n      const endTs = ad.end_date < 10000000000 ? ad.end_date * 1000 : ad.end_date;\n      endDateStr = new Date(endTs).toISOString().split('T')[0];\n    }\n    \n    const publisherPlatforms = ad.publisher_platform || [];\n    const mediaType = snapshot.display_format || ad.display_format || 'UNKNOWN';\n    \n    return {\n      ad_archive_id: ad.ad_archive_id || `ad_${index}`,\n      collation_id: ad.collation_id || '',\n      page_id: pageId,\n      page_name: pageName,\n      start_date: new Date(startDate).toISOString().split('T')[0],\n      end_date: endDateStr,\n      run_duration_days: runDurationDays,\n      is_active: true,\n      collation_count: collationCount,\n      effectiveness_score: Math.round(effectivenessScore * 100) / 100,\n      body_text: bodyText,\n      cta_type: ctaType,\n      cta_text: ctaText,\n      link_url: linkUrl,\n      link_description: linkDescription,\n      title: title,\n      media_type: mediaType,\n      image_url: imageUrl,\n      video_url: videoUrl,\n      video_thumbnail_url: videoThumbnailUrl,\n      cards_count: cards.length,\n      creative_hash: creativeHash,\n      last_checked: new Date().toISOString(),\n      status: 'NEW',\n      publisher_platforms: Array.isArray(publisherPlatforms) ? publisherPlatforms.join(', ') : ''\n    };\n  } catch (err) {\n    console.log(`Error processing ad ${index}:`, err.message);\n    return null;\n  }\n}).filter(ad => ad !== null);\n\nconsole.log(`Processed ${processedAds.length} ads`);\nconsole.log(`Ads with images: ${processedAds.filter(a => a.image_url).length}`);\n\n// Debug: Show first ad's image_url\nif (processedAds.length > 0) {\n  console.log(`First ad image_url: ${processedAds[0].image_url?.substring(0, 50)}...`);\n}\n\n// Sort and filter\nconst topAds = processedAds\n  .filter(ad => ad.image_url)\n  .sort((a, b) => b.effectiveness_score - a.effectiveness_score)\n  .slice(0, 25);\n\nconsole.log(`Returning ${topAds.length} top ads`);\n\nif (topAds.length === 0) {\n  // Debug output\n  const sampleAd = ads[0] || {};\n  return [{\n    json: {\n      error: 'No ads with images found',\n      debug: {\n        total_ads: ads.length,\n        processed: processedAds.length,\n        with_images: processedAds.filter(a => a.image_url).length,\n        sample_ad_keys: Object.keys(sampleAd),\n        sample_has_original_image_url: !!sampleAd.original_image_url,\n        sample_original_image_url: sampleAd.original_image_url?.substring(0, 100)\n      }\n    }\n  }];\n}\n\nreturn topAds.map(ad => ({ json: ad }));"
       },
-      "id": "fb84fd17-8360-480d-9adb-422ed1c0088d",
+      "id": "5a6a35f6-7c0b-4b39-8a8f-8dc8b6b5da38",
       "name": "Calculate Effectiveness & Rank",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -149,10 +149,10 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "value": "16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI",
           "mode": "list",
-          "cachedResultName": "Big Players Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+          "cachedResultName": "Loman Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
@@ -161,7 +161,7 @@
         },
         "options": {}
       },
-      "id": "8bd9310f-599e-4328-a808-d34a48a975d1",
+      "id": "15d63aac-b633-414b-b572-ee89e0bb1b8d",
       "name": "Read Existing Ads",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
@@ -181,7 +181,7 @@
       "parameters": {
         "jsCode": "// Get new ads from ScrapeCreators and existing ads from Google Sheets\nconst newAds = $('Calculate Effectiveness & Rank').all().map(i => i.json);\nconst existingAdsRaw = $('Read Existing Ads').all().map(i => i.json);\n\n// Build a map of existing ads by ad_archive_id\nconst existingAdsMap = new Map();\nexistingAdsRaw.forEach(ad => {\n  if (ad.ad_archive_id) {\n    existingAdsMap.set(ad.ad_archive_id.toString(), ad);\n  }\n});\n\n// Categorize ads\nconst results = [];\nlet newCount = 0;\nlet changedCount = 0;\nlet unchangedCount = 0;\n\nfor (const newAd of newAds) {\n  const adId = newAd.ad_archive_id?.toString();\n  if (!adId) continue;\n  \n  const existingAd = existingAdsMap.get(adId);\n  \n  if (!existingAd) {\n    // This is a NEW ad\n    newCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'NEW',\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else if (existingAd.creative_hash !== newAd.creative_hash) {\n    // This ad has CHANGED\n    changedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'CHANGED',\n        previous_hash: existingAd.creative_hash,\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else {\n    // Ad is UNCHANGED - still track it but don't reprocess\n    unchangedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'UNCHANGED',\n        status: existingAd.status || 'ANALYZED'\n      }\n    });\n  }\n}\n\n// Add summary as first item\nconst summary = {\n  json: {\n    summary: true,\n    total_ads_checked: newAds.length,\n    new_ads: newCount,\n    changed_ads: changedCount,\n    unchanged_ads: unchangedCount,\n    ads_to_process: newCount + changedCount,\n    timestamp: new Date().toISOString()\n  }\n};\n\nreturn [summary, ...results];"
       },
-      "id": "2bd656df-9635-4b4a-9425-30966e9d6b01",
+      "id": "3ac90f70-8272-46d7-878f-edd9bad8be14",
       "name": "Identify New or Changed Ads",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -223,7 +223,7 @@
         },
         "options": {}
       },
-      "id": "66940559-5c00-442e-bdf0-19e14d67a171",
+      "id": "1383505c-8f1d-47e5-aa65-96b170a57f21",
       "name": "Filter: Ads to Process",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
@@ -237,15 +237,17 @@
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "value": "16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI",
           "mode": "list",
-          "cachedResultName": "Big Players Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+          "cachedResultName": "Loman Ad Intelligence",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Competitor_Ads",
-          "mode": "name"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Competitor_Ads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
         },
         "columns": {
           "mappingMode": "autoMapInputData",
@@ -478,12 +480,363 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "diff_status",
               "displayName": "diff_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "previous_hash",
+              "displayName": "previous_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_primary_horseman",
+              "displayName": "psychology_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_value_score",
+              "displayName": "psychology_value_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_checkpoints_passed",
+              "displayName": "psychology_checkpoints_passed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_avg_checkpoint_score",
+              "displayName": "psychology_avg_checkpoint_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_hook_archetype",
+              "displayName": "psychology_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_archetype",
+              "displayName": "generated_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hook_type",
+              "displayName": "hook_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_primary_horseman",
+              "displayName": "generated_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_contrast_mechanism",
+              "displayName": "generated_contrast_mechanism",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quality_passes_checkpoints",
+              "displayName": "quality_passes_checkpoints",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quality_scroll_stop_power",
+              "displayName": "quality_scroll_stop_power",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quality_conversion_potential",
+              "displayName": "quality_conversion_potential",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "angle",
+              "displayName": "angle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "funnel_stage",
+              "displayName": "funnel_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "swipe_file_notes",
+              "displayName": "swipe_file_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_cta",
+              "displayName": "generated_cta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_data_point",
+              "displayName": "generated_data_point",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checkpoint_pain",
+              "displayName": "checkpoint_pain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "checkpoint_trust",
+              "displayName": "checkpoint_trust",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ad_concept_name",
+              "displayName": "ad_concept_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "layer_count",
+              "displayName": "layer_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "image_prompt_json",
+              "displayName": "image_prompt_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "collation_id",
+              "displayName": "collation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_text",
+              "displayName": "cta_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_url",
+              "displayName": "link_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_description",
+              "displayName": "link_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cards_count",
+              "displayName": "cards_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "visual_concept",
+              "displayName": "visual_concept",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "one_sentence_summary",
+              "displayName": "one_sentence_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "concept_ranking_score",
+              "displayName": "concept_ranking_score",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -497,7 +850,7 @@
         },
         "options": {}
       },
-      "id": "63fb484e-e0cf-41da-9da3-0ad18c60e677",
+      "id": "72a17aea-6e71-4ebf-b702-f7a00a591880",
       "name": "Update Tracking Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
@@ -519,7 +872,7 @@
           "value": "Alsj9UaTkWoXGO1U",
           "mode": "list",
           "cachedResultUrl": "/workflow/Alsj9UaTkWoXGO1U",
-          "cachedResultName": "Ad Intelligence - 2. Visual Analyzer"
+          "cachedResultName": "Ad Intelligence - 2. Visual Analyzer (V5 VisionStruct)"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -534,7 +887,7 @@
         1984,
         112
       ],
-      "id": "748b42da-24ad-4309-8740-df27a4f05a19",
+      "id": "158b33e2-c61d-49c5-989b-f313c28d8988",
       "name": "Call 'Ad Intelligence - 2. Visual Analyzer'"
     }
   ],
@@ -649,11 +1002,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1cc8d6c0-978c-48bf-8e2e-240ebf189436",
+  "versionId": "53fdd0b0-a7d0-4b38-a69e-83ce778f14b4",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
   },
-  "id": "2pYcomjkdWDkx9mx",
+  "id": "6NWxrfgVnSbNRaog",
   "tags": []
 }

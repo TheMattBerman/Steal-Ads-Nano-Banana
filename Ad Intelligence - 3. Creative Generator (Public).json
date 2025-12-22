@@ -1,45 +1,42 @@
 {
-  "name": "Ad Intelligence - 3. Creative Generator (Public)",
+  "name": "Ad Intelligence - 3. Creative Generator (Public V2)",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "955b230a-45dd-4190-aaab-b29957358303",
-        "options": {}
-      },
-      "id": "9675b05e-963f-471c-aeeb-c8922157d81b",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
+      "parameters": {},
+      "id": "98cf0f1c-1973-4b16-8d2c-0dce29905a06",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
       "position": [
-        -2848,
-        288
-      ],
-      "webhookId": "955b230a-45dd-4190-aaab-b29957358303"
+        -4128,
+        224
+      ]
     },
     {
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "value": "1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI",
           "mode": "list",
-          "cachedResultName": "Big Players Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+          "cachedResultName": "Big Players Ad Intelligence (Public)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Brand_Guidelines",
-          "mode": "name"
+          "value": 1373665098,
+          "mode": "list",
+          "cachedResultName": "Brand_Guidelines",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit#gid=1373665098"
         },
         "options": {}
       },
-      "id": "eeef889a-96bd-49aa-b5ed-0d8b283eeb3a",
-      "name": "Load Brand Guidelines",
+      "id": "d068cda0-86b7-49e6-a04b-1913b1db0bcf",
+      "name": "Read Brand Guidelines",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.6,
+      "typeVersion": 4.4,
       "position": [
-        -2496,
-        192
+        -3920,
+        224
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -50,54 +47,50 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get ad data directly from the workflow trigger\nconst adData = $('When Executed by Another Workflow').first().json;\n\n// Get brand guidelines and convert to object\nconst brandRows = $('Load Brand Guidelines').all().map(i => i.json);\nconst brand = {};\nbrandRows.forEach(row => {\n  const field = row.Field || row.field;\n  const value = row.Value || row.value;\n  if (field) {\n    brand[field.toLowerCase().replace(/\\s+/g, '_')] = value;\n  }\n});\n\n// Parse vision_json if it's a string\nlet visionJson = adData.vision_json;\nif (typeof visionJson === 'string' && visionJson) {\n  try {\n    visionJson = JSON.parse(visionJson);\n  } catch (e) {\n    console.log('Could not parse vision_json:', e.message);\n  }\n}\n\n// Parse marketing_insights if it's a string\nlet marketingInsights = adData.marketing_insights;\nif (typeof marketingInsights === 'string' && marketingInsights) {\n  try {\n    marketingInsights = JSON.parse(marketingInsights);\n  } catch (e) {\n    console.log('Could not parse marketing_insights:', e.message);\n  }\n}\n\nreturn [{\n  json: {\n    ...adData,\n    brand: brand,\n    vision_json: visionJson,\n    marketing_insights: marketingInsights\n  }\n}];"
+        "jsCode": "// Extract Brand Info from sheet and merge with incoming ad data\nconst brandRows = $('Read Brand Guidelines').all();\nconst adData = $('When Executed by Another Workflow').first().json;\n\n// Build brand_info object from key-value pairs\nconst brandInfo = {};\n\n// DEBUG: Log what we're getting from the sheet\nconsole.log('Brand rows count:', brandRows.length);\nif (brandRows.length > 0) {\n  console.log('First row keys:', Object.keys(brandRows[0].json));\n  console.log('First row data:', JSON.stringify(brandRows[0].json));\n}\n\nbrandRows.forEach(row => {\n  const data = row.json;\n  \n  // Try multiple possible column name formats\n  // Google Sheets returns data with header names as keys\n  const key = data.Field || data.field || data.Key || data.key || data.A || data['Field'] || data['A'];\n  const value = data.Value || data.value || data.Content || data.content || data.B || data['Value'] || data['B'];\n  \n  if (key && value) {\n    // Normalize key: lowercase, replace spaces/hyphens with underscores\n    const normalizedKey = String(key).toLowerCase().replace(/\\s+/g, '_').replace(/-/g, '_');\n    brandInfo[normalizedKey] = value;\n    console.log(`Mapped: ${key} -> ${normalizedKey} = ${String(value).substring(0, 50)}...`);\n  }\n});\n\n// If we got no data from key-value format, try single row with all columns\nif (Object.keys(brandInfo).length === 0 && brandRows.length > 0) {\n  console.log('No key-value pairs found, trying column format...');\n  const data = brandRows[0].json;\n  Object.keys(data).forEach(key => {\n    if (data[key] && typeof data[key] === 'string') {\n      const normalizedKey = key.toLowerCase().replace(/\\s+/g, '_').replace(/-/g, '_');\n      brandInfo[normalizedKey] = data[key];\n    }\n  });\n}\n\n// Field mappings for normalization (map various names to standard names)\nconst fieldMappings = {\n  'brand': 'brand_name', 'name': 'brand_name', 'company': 'brand_name', 'brand_name': 'brand_name',\n  'description': 'description', 'about': 'description', 'tagline': 'tagline',\n  'target': 'target_audience', 'audience': 'target_audience', 'icp': 'target_audience', 'target_audience': 'target_audience',\n  'pain_points': 'pain_points', 'pains': 'pain_points', 'problems': 'pain_points',\n  'usps': 'key_USPs', 'key_usps': 'key_USPs', 'benefits': 'key_USPs', 'key_usps': 'key_USPs',\n  'voice': 'voice', 'tone': 'voice', 'voice_keywords': 'voice_keywords',\n  'example_headlines': 'example_headlines', 'headlines': 'example_headlines',\n  'forbidden_words': 'forbidden_words', 'forbidden_phrases': 'forbidden_words',\n  'primary_color': 'background_color', 'background_color': 'background_color',\n  'secondary_color': 'secondary_color', 'text_color': 'secondary_color',\n  'accent_color': 'accent_color', 'cta_color': 'accent_color',\n  'primary_font': 'primary_font', 'font': 'primary_font',\n  'font_fallback': 'font_fallback',\n  'typography_tracking': 'typography_tracking', 'tracking': 'typography_tracking',\n  'typography_line_height': 'typography_line_height', 'line_height': 'typography_line_height',\n  'audience_persona': 'audience_persona',\n  'content_pillars': 'content_pillars',\n  'product_name': 'product_name',\n  'website_url': 'website_url',\n  'logo_url': 'logo_url'\n};\n\n// Create normalized brand info with standard field names\nconst normalizedBrandInfo = {};\nObject.keys(brandInfo).forEach(key => {\n  const standardKey = fieldMappings[key] || key;\n  normalizedBrandInfo[standardKey] = brandInfo[key];\n});\n\nconsole.log('Final brand_info keys:', Object.keys(normalizedBrandInfo));\nconsole.log('brand_name:', normalizedBrandInfo.brand_name);\nconsole.log('pain_points:', normalizedBrandInfo.pain_points?.substring(0, 100));\n\n// Parse vision_json if it's a string\nlet visionJson = adData.vision_json;\nif (typeof visionJson === 'string' && visionJson) {\n  try { visionJson = JSON.parse(visionJson); } catch (e) { console.log('Vision JSON parse error:', e); }\n}\n\n// Parse marketing_insights if it's a string\nlet marketingInsights = adData.marketing_insights;\nif (typeof marketingInsights === 'string' && marketingInsights) {\n  try { marketingInsights = JSON.parse(marketingInsights); } catch (e) { console.log('Marketing insights parse error:', e); }\n}\n\nreturn [{\n  json: {\n    ...adData,\n    brand_info: normalizedBrandInfo,\n    vision_json: visionJson,\n    marketing_insights: marketingInsights\n  }\n}];"
       },
-      "id": "872cc314-170b-40dc-8b8e-df9f42222a47",
-      "name": "Merge Ad + Brand Data",
+      "id": "496b75f8-b50f-4af7-a084-c87c95d79930",
+      "name": "Extract Brand Info",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2256,
-        192
+        -3696,
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Merge Ad + Brand Data').first().json;\n\n// Parse vision JSON if it's a string\nlet visionData = data.vision_json;\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    visionData = {};\n  }\n}\n\n// Parse marketing insights if available\nlet marketingInsights = data.marketing_insights;\nif (typeof marketingInsights === 'string') {\n  try {\n    marketingInsights = JSON.parse(marketingInsights);\n  } catch (e) {\n    marketingInsights = {};\n  }\n}\n\nconst brand = data.brand || {};\n\nconst prompt = `You are an expert ad creative strategist. Analyze this competitor ad and create a Big Players branded version.\n\n## COMPETITOR AD ANALYSIS (JSON):\n${JSON.stringify(visionData, null, 2)}\n\n## COMPETITOR MARKETING INSIGHTS:\n${JSON.stringify(marketingInsights, null, 2)}\n\n## COMPETITOR AD COPY:\n${data.body_text || 'No text available'}\n\n## BIG PLAYERS BRAND GUIDELINES:\n- Brand Name: ${brand.brand_name || 'Big Players'}\n- Tagline: ${brand.tagline || 'Stealing billion-dollar growth strategies so you don\\'t have to'}\n- Primary Color: ${brand.primary_color || '#EC4899'} (pink/magenta)\n- Secondary Color: ${brand.secondary_color || '#1F2937'} (dark gray)\n- Accent Color: ${brand.accent_color || '#10B981'} (emerald green)\n- Voice: ${brand.voice || 'Direct, tactical, proof-driven'}\n- Target Audience: ${brand.target_audience || 'Skeptical founders and heads of growth at early-stage companies'}\n- Forbidden Words: ${brand.forbidden_words || 'game-changer, revolutionary, guru, unlock, unleash'}\n\n## YOUR TASK:\nCreate a Big Players branded version of this ad. Output a JSON object with this EXACT structure:\n\n{\n  \"meta\": {\n    \"original_ad_id\": \"${data.ad_archive_id}\",\n    \"competitor\": \"${data.page_name}\",\n    \"generation_date\": \"${new Date().toISOString()}\",\n    \"brand\": \"Big Players\"\n  },\n  \"creative_brief\": {\n    \"objective\": \"string - what this ad aims to achieve\",\n    \"hook_strategy\": \"string - how we grab attention\",\n    \"value_proposition\": \"string - core benefit we're offering\",\n    \"cta_strategy\": \"string - what action we want\"\n  },\n  \"copy\": {\n    \"headline\": {\n      \"text\": \"string - primary headline (max 10 words)\",\n      \"rationale\": \"string - why this works\"\n    },\n    \"subheadline\": {\n      \"text\": \"string - supporting headline (max 15 words)\",\n      \"rationale\": \"string - why this works\"  \n    },\n    \"body\": {\n      \"text\": \"string - main ad copy (2-3 sentences max)\",\n      \"rationale\": \"string - why this works\"\n    },\n    \"cta\": {\n      \"text\": \"string - call to action button text\",\n      \"rationale\": \"string - why this works\"\n    }\n  },\n  \"visual_direction\": {\n    \"layout\": \"string - describe the composition\",\n    \"focal_point\": \"string - what draws the eye first\",\n    \"color_usage\": {\n      \"background\": \"string - background color/treatment\",\n      \"text_colors\": \"string - how brand colors are used in text\",\n      \"accent_usage\": \"string - how accent color highlights key elements\"\n    },\n    \"typography\": {\n      \"headline_style\": \"string - bold, weight, size guidance\",\n      \"body_style\": \"string - readable, professional\"\n    },\n    \"mood\": \"string - overall feeling (e.g., confident, urgent, exclusive)\"\n  },\n  \"image_prompt\": {\n    \"full_prompt\": \"string - complete prompt for image generation\",\n    \"style_keywords\": [\"array\", \"of\", \"style\", \"keywords\"],\n    \"must_include\": [\"array\", \"of\", \"required\", \"elements\"],\n    \"must_avoid\": [\"array\", \"of\", \"things\", \"to\", \"avoid\"]\n  },\n  \"competitor_elements_adapted\": {\n    \"what_we_kept\": \"string - effective elements we're using\",\n    \"what_we_changed\": \"string - elements we improved or replaced\",\n    \"why\": \"string - strategic reasoning\"\n  }\n}\n\nIMPORTANT:\n- Write in Big Players voice: direct, tactical, proof-driven\n- NEVER use forbidden words\n- Headlines should be punchy and specific (use numbers, specifics)\n- The image_prompt.full_prompt should be detailed enough to generate a professional Facebook/Instagram ad\n- Output ONLY the JSON object, no additional text`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [\n    {\n      role: \"user\", \n      content: prompt\n    }\n  ],\n  max_tokens: 2000,\n  temperature: 0.7\n};\n\nreturn [{\n  json: {\n    ...data,\n    copy_request_body: requestBody\n  }\n}];"
+        "jsCode": "// =============================================================================\n// STEP 1: GENERATE 3 CREATIVE CONCEPTS\n// Uses Kallaway Psychology Framework for original ideation\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst visionJson = prevData.vision_json || {};\nconst psychologyAnalysis = prevData.marketing_insights || {};\nconst competitorCopy = prevData.body_text || '';\nconst brandInfo = prevData.brand_info || {};\n\n// DEBUG: Log brand info to verify it's populated\nconsole.log('Brand info keys:', Object.keys(brandInfo));\nconsole.log('Brand name:', brandInfo.brand_name);\nconsole.log('Pain points:', brandInfo.pain_points?.substring(0, 100));\n\nconst prompt = `You are an elite advertising creative director who specializes in direct-response ads for B2B SaaS. You use the Kallaway Psychology Framework to create ads that hack human behavior.\n\n## YOUR TASK\n\nCreate 3 ORIGINAL ad concepts for the brand below. Do NOT just swap words from the competitor ad. Instead:\n1. Understand WHY the competitor's ad psychology works\n2. Apply those psychological principles to the brand's unique positioning\n3. Generate fresh, specific, concrete concepts that would make the target audience stop scrolling\n\n## COMPETITOR AD ANALYSIS\n\n**What the competitor ad said:**\n${competitorCopy}\n\n**Visual structure that worked:**\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n**Psychology that made it effective:**\n${JSON.stringify(psychologyAnalysis, null, 2)}\n\n## BRAND CONTEXT (THIS IS WHO YOU'RE CREATING ADS FOR)\n\n**Brand:** ${brandInfo.brand_name || 'Unknown'}\n**Tagline:** ${brandInfo.tagline || ''}\n**What they do:** ${brandInfo.description || brandInfo.tagline || 'AI-powered solution'}\n**Product name:** ${brandInfo.product_name || brandInfo.brand_name || ''}\n\n**Target audience:** ${brandInfo.target_audience || 'Business owners'}\n\n**Audience persona:**\n${brandInfo.audience_persona || '- Not specified'}\n\n**Primary pain points (USE THESE - they are gold):**\n${brandInfo.pain_points || '- Not specified'}\n\n**Key USPs - specific proof points (USE THESE NUMBERS):**\n${brandInfo.key_usps || brandInfo.key_USPs || '- Not specified'}\n\n**Voice/tone:**\n${brandInfo.voice || 'professional, direct'}\n\n**Voice keywords (use these words):**\n${brandInfo.voice_keywords || ''}\n\n**Example headlines that represent the brand voice:**\n${brandInfo.example_headlines || '- Not specified'}\n\n**Forbidden words/phrases (NEVER USE):**\n${brandInfo.forbidden_words || 'None specified'}\n\n**Brand colors:**\n- Background: ${brandInfo.background_color || brandInfo.primary_color || '#0a0a0a'}\n- Text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent (CTA): ${brandInfo.accent_color || '#FADC3C'}\n\n## KALLAWAY PSYCHOLOGY FRAMEWORK\n\n**The Four Horsemen of Desires** (every ad must promise to unlock ONE primary):\n1. 💰 MONEY - Wealth, revenue, cost savings, financial freedom\n2. ⏰ TIME - Efficiency, automation, shortcuts, freedom\n3. 💪 HEALTH - Physical, mental, longevity (rare for B2B)\n4. 🏆 STATUS - Recognition, competitive advantage, being ahead\n\n**The Six Checkpoints** (every ad must pass ALL SIX):\n1. PAIN - Trigger and aggravate the specific pain point\n2. TRUST - Establish credibility (numbers, proof, specificity)\n3. CONTRARIAN - Offer a differentiated approach\n4. LIKABILITY - Be human, authentic, relatable\n5. REHOOK - Maintain interest through the entire ad\n6. CTA - Clear, compelling call to action\n\n**Hook Archetypes:**\n- FORTUNE TELLER: Predict a future outcome\n- MAGICIAN: Achieve the impossible\n- INVESTIGATOR: Uncover hidden truth\n- CONTRARIAN: Challenge accepted wisdom\n- TEACHER: Educational revelation\n- EXPERIMENTOR: Test with surprising results\n\n**Hook Formula (3 steps):**\n1. LEAN-IN: Pattern interrupt that grabs attention\n2. INTERJECTION: Pivot word (But, However, What if)\n3. SNAPBACK: Contrarian redirect\n\n## OUTPUT REQUIREMENTS\n\n{\n  \"concepts\": [\n    {\n      \"concept_name\": \"Short descriptive name\",\n      \"primary_horseman\": \"Money|Time|Status\",\n      \"hook_archetype\": \"Fortune Teller|Magician|Investigator|Contrarian|Teacher|Experimentor\",\n      \"hook\": {\n        \"full_hook\": \"Complete hook as it would appear\",\n        \"lean_in\": \"The attention-grabbing opener\",\n        \"interjection\": \"The pivot word/phrase\",\n        \"snapback\": \"The contrarian reframe\"\n      },\n      \"copy\": {\n        \"headline\": \"Main headline text\",\n        \"subheadline\": \"Supporting line\",\n        \"data_point\": \"Specific number/stat from brand USPs\",\n        \"cta_text\": \"Button text\",\n        \"cta_subtext\": \"Optional line below CTA\"\n      },\n      \"visual_concept\": {\n        \"description\": \"Detailed description of what the IMAGE should show\",\n        \"key_elements\": [\"List\", \"of\", \"visual\", \"elements\"],\n        \"mood\": \"The emotional tone\",\n        \"avoid\": \"What NOT to show\"\n      },\n      \"psychology_mapping\": {\n        \"pain_checkpoint\": \"How this triggers pain\",\n        \"trust_checkpoint\": \"How this builds credibility\",\n        \"contrarian_checkpoint\": \"How this differs\",\n        \"likability_checkpoint\": \"What makes this human\",\n        \"rehook_checkpoint\": \"How interest is maintained\",\n        \"cta_checkpoint\": \"Why the CTA works\"\n      },\n      \"one_sentence_summary\": \"What would someone tell a friend?\"\n    }\n  ]\n}\n\n## CRITICAL RULES\n\n1. BE SPECIFIC - \"You missed $450 this dinner service\" beats \"You're losing money\"\n2. USE THE BRAND'S ACTUAL NUMBERS - \"22% revenue increase\", \"$25-$50/call\", \"30-40% of calls missed\", \"ROI in 10 days\"\n3. USE THEIR LANGUAGE - \"recapture\", \"revenue\", \"never miss\", \"offload\", \"lift ticket\"\n4. SPEAK TO THE PERSONA - \"Operator Michael\" overwhelmed during rush, needs ROI proof fast\n5. VISUAL CONCEPTS MUST BE GENERATABLE - No realistic faces. Use: phone screens with call logs, receipts showing missed revenue, POS terminals, before/after comparisons\n6. EACH CONCEPT MUST BE GENUINELY DIFFERENT - Different hook archetype, different visual approach\n7. AVOID FORBIDDEN WORDS - No \"revolutionary\", \"game-changer\", \"cutting-edge\", \"innovative solution\"\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 4000,\n  temperature: 0.8\n};\n\nreturn [{ json: { ...prevData, concept_generation_request: requestBody } }];"
       },
-      "id": "fb3aed97-aaa2-44d0-97ee-4d90f194deb4",
-      "name": "Build Copy Generation Request",
+      "id": "98c6e424-85ab-4194-8a83-b7adee660a98",
+      "name": "Build Concept Generation Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2000,
-        192
+        -3472,
+        224
       ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $json.copy_request_body }}",
+        "jsonBody": "={{ JSON.stringify($json.concept_generation_request) }}",
         "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
+          "timeout": 120000
         }
       },
-      "id": "03e82bec-46bc-489e-9345-5124a5a71813",
-      "name": "Generate Ad Copy",
+      "id": "f7bb590e-8e6f-44f2-a6f1-964b85069967",
+      "name": "Generate Concepts (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1744,
-        192
+        -3248,
+        224
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -108,68 +101,158 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $('Build Copy Generation Request').first().json;\nconst response = items[0].json;\n\nlet generatedContent = {};\nlet headlines = '';\nlet bodyCopy = '';\nlet imagePrompt = '';\n\ntry {\n  let content = response.choices?.[0]?.message?.content || '';\n  \n  // Clean up markdown code blocks if present\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Parse the JSON response\n  generatedContent = JSON.parse(content);\n  \n  // Extract the key fields for backward compatibility with sheet columns\n  headlines = generatedContent.copy?.headline?.text || '';\n  if (generatedContent.copy?.subheadline?.text) {\n    headlines += ' | ' + generatedContent.copy.subheadline.text;\n  }\n  \n  bodyCopy = generatedContent.copy?.body?.text || '';\n  if (generatedContent.copy?.cta?.text) {\n    bodyCopy += '\\n\\nCTA: ' + generatedContent.copy.cta.text;\n  }\n  \n  imagePrompt = generatedContent.image_prompt?.full_prompt || '';\n  \n} catch (e) {\n  console.log('Error parsing generated content:', e.message);\n  // Fallback: treat as plain text\n  const content = response.choices?.[0]?.message?.content || '';\n  headlines = 'Parse error - check raw response';\n  bodyCopy = content.substring(0, 500);\n  imagePrompt = '';\n}\n\n// Clean up request body from previous data\nconst { copy_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    // Full structured JSON for reference\n    generated_creative_json: generatedContent,\n    // Individual fields for Google Sheets columns\n    generated_headlines: headlines,\n    generated_body_copy: bodyCopy,\n    generated_image_prompt: imagePrompt,\n    // Additional extracted data\n    generated_cta: generatedContent.copy?.cta?.text || '',\n    creative_brief: generatedContent.creative_brief || {},\n    visual_direction: generatedContent.visual_direction || {},\n    status: 'COPY_GENERATED'\n  }\n}];"
+        "jsCode": "const prevData = $('Build Concept Generation Request').first().json;\nconst response = items[0].json;\n\nlet concepts = [];\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    concepts = parsed.concepts || [];\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    concepts,\n    concepts_raw: response.choices?.[0]?.message?.content\n  }\n}];"
       },
-      "id": "0f1624a1-94e5-4012-8daf-dfd3931fbffe",
-      "name": "Parse Generated Copy",
+      "id": "e4561867-9b04-4fca-ba60-8f6ce0540c44",
+      "name": "Parse Concepts Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1504,
-        192
+        -3040,
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Parse Generated Copy').first().json;\n\n// Parse vision_json if it's a string\nlet visionData = data.vision_json;\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    visionData = {};\n  }\n}\n\n// Get the rich image prompt from the generated creative JSON\nlet imagePrompt = '';\n\n// First priority: Use the detailed prompt from creative JSON\nif (data.generated_creative_json?.image_prompt?.full_prompt) {\n  imagePrompt = data.generated_creative_json.image_prompt.full_prompt;\n  \n  // Add the style keywords, must include, must avoid\n  const mustInclude = data.generated_creative_json.image_prompt.must_include || [];\n  const mustAvoid = data.generated_creative_json.image_prompt.must_avoid || [];\n  const styleKeywords = data.generated_creative_json.image_prompt.style_keywords || [];\n  \n  if (mustInclude.length > 0) {\n    imagePrompt += `\\n\\nMUST INCLUDE: ${mustInclude.join(', ')}`;\n  }\n  if (mustAvoid.length > 0) {\n    imagePrompt += `\\n\\nMUST AVOID: ${mustAvoid.join(', ')}`;\n  }\n  if (styleKeywords.length > 0) {\n    imagePrompt += `\\n\\nSTYLE KEYWORDS: ${styleKeywords.join(', ')}`;\n  }\n  \n  // Add visual direction from generated creative\n  const visualDir = data.generated_creative_json?.visual_direction;\n  if (visualDir) {\n    imagePrompt += `\\n\\nVISUAL DIRECTION:`;\n    if (visualDir.layout) imagePrompt += `\\n- Layout: ${visualDir.layout}`;\n    if (visualDir.focal_point) imagePrompt += `\\n- Focal Point: ${visualDir.focal_point}`;\n    if (visualDir.mood) imagePrompt += `\\n- Mood: ${visualDir.mood}`;\n    if (visualDir.color_usage?.background) imagePrompt += `\\n- Background: ${visualDir.color_usage.background}`;\n    if (visualDir.typography?.headline_style) imagePrompt += `\\n- Headline Style: ${visualDir.typography.headline_style}`;\n  }\n  \n} else {\n  // Fallback to basic prompt building\n  const brand = data.brand || {};\n  const headline = data.generated_creative_json?.copy?.headline?.text || \n                   data.generated_headlines?.split('|')[0]?.trim() || \n                   'Stealing billion-dollar growth strategies';\n  \n  // Use competitor ad style indicators if available\n  const adStyle = visionData?.ad_style_indicators || {};\n  let styleNotes = [];\n  if (adStyle.appears_ugc) styleNotes.push('UGC-style, authentic look');\n  if (adStyle.has_social_proof) styleNotes.push('include social proof elements');\n  \n  imagePrompt = `Create a professional Facebook/Instagram ad image.\n\nBRAND STYLE:\n- Primary Color: ${brand.primary_color || '#EC4899'} (pink/magenta)\n- Secondary Color: ${brand.secondary_color || '#1F2937'} (dark gray)  \n- Accent Color: ${brand.accent_color || '#10B981'} (emerald green)\n- Tone: Direct, tactical, professional\n\nCOMPETITOR AD COMPOSITION TO REFERENCE:\n- Layout: ${visionData?.composition?.layout || 'Centered'}\n- Focal Point: ${visionData?.composition?.focal_point || 'Headline text'}\n- Mood: ${visionData?.global_context?.mood || 'Professional'}\n- Contrast: ${visionData?.color_palette?.contrast_level || 'High'}\n${styleNotes.length > 0 ? `- Style Notes: ${styleNotes.join(', ')}` : ''}\n\nHEADLINE TO FEATURE:\n\"${headline}\"\n\nCREATE:\nA scroll-stopping ad image that would perform well on Facebook/Instagram. Modern, clean design with bold typography. The brand colors should be prominent. Make it look like a high-converting performance marketing ad, not generic stock imagery.\n\nApply Big Players brand colors while maintaining the visual impact and composition style of the competitor ad.`;\n}\n\nreturn [{\n  json: {\n    ...data,\n    generated_image_prompt: imagePrompt\n  }\n}];"
+        "jsCode": "// =============================================================================\n// STEP 2: RANK & SELECT BEST CONCEPT\n// =============================================================================\n\nconst prevData = items[0].json;\nconst concepts = prevData.concepts || [];\nconst brandInfo = prevData.brand_info || {};\n\nif (concepts.length === 0) {\n  return [{ json: { ...prevData, error: 'No concepts to evaluate' } }];\n}\n\nconst prompt = `You are an advertising strategist who evaluates ad concepts using the Kallaway Psychology Framework.\n\n## CONCEPTS TO EVALUATE\n\n${JSON.stringify(concepts, null, 2)}\n\n## BRAND CONTEXT\n\n**Brand:** ${brandInfo.brand_name || 'Unknown'}\n**Target audience:** ${brandInfo.target_audience || 'Business owners'}\n**Primary pain points:** ${brandInfo.pain_points || 'Not specified'}\n**Key USPs:** ${brandInfo.key_USPs || brandInfo.key_usps || 'Not specified'}\n\n## SCORING CRITERIA (1-10 each)\n\n### Kallaway Six Checkpoints (40%)\n1. Pain Score - How viscerally does it trigger pain?\n2. Trust Score - How credible is the proof?\n3. Contrarian Score - How differentiated?\n4. Likability Score - How human/relatable?\n5. Rehook Score - Does it maintain interest?\n6. CTA Score - Is the CTA compelling?\n\n### Value Equation (30%)\n7. Contrast Score - Reality vs expectations?\n8. Relevance Score - How precisely targeted?\n\n### Execution (30%)\n9. Visual Feasibility - Can AI generate this? (10=simple graphics, 7-9=mockups/receipts, 4-6=scenes with people, 1-3=realistic faces)\n10. Brand Alignment - Uses actual pain points/USPs?\n11. Atomic Sharability - One sentence explanation?\n12. Scroll-Stop Power - Would this stop scrolling?\n\n## OUTPUT\n\n{\n  \"evaluations\": [\n    {\n      \"concept_name\": \"Name\",\n      \"scores\": {\n        \"pain\": 8, \"trust\": 7, \"contrarian\": 9, \"likability\": 6, \"rehook\": 7, \"cta\": 8,\n        \"contrast\": 8, \"relevance\": 9,\n        \"visual_feasibility\": 7, \"brand_alignment\": 8, \"atomic_sharability\": 9, \"scroll_stop_power\": 8\n      },\n      \"weighted_total\": 8.0,\n      \"strengths\": [\"What works\"],\n      \"weaknesses\": [\"What could improve\"]\n    }\n  ],\n  \"ranking\": [\n    {\"rank\": 1, \"concept_name\": \"Winner\", \"weighted_total\": 8.5}\n  ],\n  \"winner\": {\n    \"concept_name\": \"Name of winner\",\n    \"why_it_won\": \"2-3 sentence explanation\",\n    \"recommended_tweaks\": [\"Any improvements\"]\n  }\n}\n\nBe honest and critical. Output ONLY JSON.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.3\n};\n\nreturn [{ json: { ...prevData, ranking_request: requestBody } }];"
       },
-      "id": "bccc73ea-8562-4eec-a8d2-fc7c1055f461",
-      "name": "Build Image Prompt",
+      "id": "34945046-72e1-490f-8b04-3cb7dfa81d91",
+      "name": "Build Ranking Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1248,
-        192
+        -2816,
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $('Build Image Prompt').first().json;\n\n// Determine aspect ratio from competitor ad's vision analysis\nlet aspectRatio = \"4:5\"; // Default for Facebook/Instagram feed\nlet resolution = \"2K\";\n\n// Check vision_json for the original ad's format\nlet visionData = prevData.vision_json;\n\n// Parse if it's a string\nif (typeof visionData === 'string') {\n  try {\n    visionData = JSON.parse(visionData);\n  } catch (e) {\n    console.log('Could not parse vision_json');\n    visionData = {};\n  }\n}\n\nif (visionData?.meta?.ad_format) {\n  const format = visionData.meta.ad_format.toLowerCase();\n  \n  // Check for vertical/story formats -> 9:16\n  if (format.includes('vertical') || \n      format.includes('story') || \n      format.includes('portrait') || \n      format.includes('9:16') ||\n      format.includes('reel')) {\n    aspectRatio = \"9:16\";\n  } \n  // Check for square formats -> 1:1\n  else if (format.includes('square') || format.includes('1:1')) {\n    aspectRatio = \"1:1\";\n  } \n  // Check for landscape/horizontal formats -> 16:9\n  else if (format.includes('landscape') || \n           format.includes('horizontal') || \n           format.includes('16:9') ||\n           format.includes('banner')) {\n    aspectRatio = \"16:9\";\n  }\n  // Check for feed formats -> 4:5\n  else if (format.includes('feed') || format.includes('4:5')) {\n    aspectRatio = \"4:5\";\n  }\n}\n\n// Also check composition layout as a backup\nif (aspectRatio === \"4:5\" && visionData?.composition?.layout) {\n  const layout = visionData.composition.layout.toLowerCase();\n  if (layout.includes('vertical')) {\n    aspectRatio = \"9:16\";\n  } else if (layout.includes('horizontal')) {\n    aspectRatio = \"16:9\";\n  }\n}\n\nconst imagePrompt = prevData.generated_image_prompt;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  modalities: [\"image\", \"text\"],\n  messages: [\n    {\n      role: \"user\",\n      content: imagePrompt\n    }\n  ],\n  max_tokens: 4096,\n  extra_body: {\n    aspect_ratio: aspectRatio,\n    resolution: resolution\n  }\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    requested_aspect_ratio: aspectRatio,\n    requested_resolution: resolution,\n    detected_format: visionData?.meta?.ad_format || 'unknown'\n  }\n}];"
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ranking_request) }}",
+        "options": {
+          "timeout": 120000
+        }
       },
-      "id": "710e6594-3928-457d-886c-e37b55ebbcd0",
+      "id": "0de486eb-7644-4038-ad6d-1087bd618a7c",
+      "name": "Rank Concepts (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2592,
+        224
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Build Ranking Request').first().json;\nconst response = items[0].json;\n\nlet ranking = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    ranking = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\n// Find winning concept\nconst concepts = prevData.concepts || [];\nconst winnerName = ranking.winner?.concept_name || concepts[0]?.concept_name;\nconst winningConcept = concepts.find(c => c.concept_name === winnerName) || concepts[0];\n\nreturn [{\n  json: {\n    ...prevData,\n    ranking,\n    winning_concept: winningConcept,\n    ranking_raw: response.choices?.[0]?.message?.content\n  }\n}];"
+      },
+      "id": "41918578-731f-4263-9132-d909f6b488e3",
+      "name": "Parse Ranking Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2368,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// STEP 3: CONSTRUCT IMAGE SPEC JSON\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst winningConcept = prevData.winning_concept || {};\nconst ranking = prevData.ranking || {};\nconst visionJson = prevData.vision_json || {};\nconst brandInfo = prevData.brand_info || {};\n\nconst prompt = `You are a technical art director converting a creative concept into an image generation specification.\n\n## WINNING CONCEPT\n\n${JSON.stringify(winningConcept, null, 2)}\n\n## RECOMMENDED TWEAKS\n\n${JSON.stringify(ranking.winner?.recommended_tweaks || [], null, 2)}\n\n## COMPETITOR'S VISUAL STRUCTURE (Layout reference)\n\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n## BRAND STYLING (MUST USE EXACTLY)\n\n**Colors:**\n- Background: ${brandInfo.background_color || '#0a0a0a'}\n- Primary text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent/CTA: ${brandInfo.accent_color || '#FADC3C'}\n${brandInfo.accent_color_orange ? `- Orange: ${brandInfo.accent_color_orange}` : ''}\n${brandInfo.accent_color_blue ? `- Blue: ${brandInfo.accent_color_blue}` : ''}\n\n**Typography:**\n- Font: ${brandInfo.primary_font || 'Inter'}\n- Fallback: ${brandInfo.font_fallback || 'Helvetica, sans-serif'}\n- Tracking: ${brandInfo.typography_tracking || '-2%'}\n- Line height: ${brandInfo.typography_line_height || '95%'}\n\n## OUTPUT FORMAT\n\n{\n  \"ad_concept_name\": \"Name_With_Underscores\",\n  \"file_specs\": {\n    \"dimensions\": \"1080x1920\",\n    \"format\": \"9:16 Vertical\"\n  },\n  \"brand_styling\": {\n    \"background_color\": \"#0a0a0a\",\n    \"primary_accent_color\": \"#FADC3C\",\n    \"secondary_accent_color\": \"#f7f4f0\",\n    \"primary_font\": \"Font name\",\n    \"typography_treatment\": \"Bold headlines, clean body\"\n  },\n  \"layout_layers\": [\n    {\n      \"layer_name\": \"Headline\",\n      \"type\": \"text\",\n      \"content\": \"Headline text\",\n      \"style\": { \"color\": \"#FFFFFF\", \"weight\": \"800\", \"size_px\": 72, \"alignment\": \"left\" },\n      \"position\": { \"top_px\": 120, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Subheadline\",\n      \"type\": \"text\",\n      \"content\": \"Subheadline text\",\n      \"style\": { \"color\": \"#FADC3C\", \"weight\": \"600\", \"size_px\": 36 },\n      \"position\": { \"top_px\": 320, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Visual_Element\",\n      \"type\": \"image_placeholder\",\n      \"position\": { \"top_px\": 450, \"center_x\": true, \"width_px\": 900, \"height_px\": 600 },\n      \"image_generation_prompt\": \"Detailed 50+ word prompt for the visual element only. Specify colors (#FADC3C yellow, #0a0a0a black), style, objects. Use 'on dark background'. NO realistic human faces.\"\n    },\n    {\n      \"layer_name\": \"Data_Point\",\n      \"type\": \"text_badge\",\n      \"content\": \"22% more revenue\",\n      \"style\": { \"color\": \"#0a0a0a\", \"background_color\": \"#FADC3C\", \"weight\": \"700\", \"size_px\": 32 },\n      \"position\": { \"top_px\": 1100, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"CTA_Button\",\n      \"type\": \"button\",\n      \"content\": \"Button Text\",\n      \"style\": { \"background_color\": \"#FADC3C\", \"text_color\": \"#0a0a0a\", \"weight\": \"700\", \"size_px\": 42, \"border_radius_px\": 100 },\n      \"position\": { \"bottom_px\": 120, \"center_x\": true }\n    }\n  ]\n}\n\n## RULES\n\n1. USE EXACT BRAND COLORS - Hex codes are non-negotiable\n2. PROPER LAYER POSITIONS - Headline at top, visual in middle, CTA at bottom\n3. IMAGE PROMPT - Describe visual only, not text. Specify style/colors. Use \"on dark background\"\n4. TEXT CONTENT - Use exact copy from winning concept\n5. NO REALISTIC FACES in image prompt\n6. image_generation_prompt must be 50+ words with specific details\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.4\n};\n\nreturn [{ json: { ...prevData, json_construction_request: requestBody } }];"
+      },
+      "id": "4b6ef283-5b05-476e-b97e-20c8660a24fa",
+      "name": "Build JSON Construction Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2160,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.json_construction_request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "95ec85b0-f943-4cd5-af76-bb51c298f20b",
+      "name": "Construct JSON (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1936,
+        224
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FoHuYOrModyYssj3",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Build JSON Construction Request').first().json;\nconst response = items[0].json;\n\nlet imageSpec = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    imageSpec = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    image_generation_prompt: imageSpec,\n    image_spec_raw: response.choices?.[0]?.message?.content\n  }\n}];"
+      },
+      "id": "69b95c15-4114-433b-bfe2-2ce2649e90b2",
+      "name": "Parse Final JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1712,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// Build Image Request for Gemini Image Generation - V7 FIXED\n// Removes pixel values from prompt to prevent them being rendered as text\n// =============================================================================\n\nconst prevData = items[0].json;\nconst imageGenPrompt = prevData.image_generation_prompt || {};\nconst fileSpecs = imageGenPrompt.file_specs || {};\nconst brandStyling = imageGenPrompt.brand_styling || {};\nconst layers = imageGenPrompt.layout_layers || [];\nconst brandInfo = prevData.brand_info || {};\n\n// Determine aspect ratio\nlet aspectRatio = '9:16';\nconst format = fileSpecs.format || '';\nconst dimensions = fileSpecs.dimensions || '';\n\nif (format.includes('1:1') || dimensions === '1080x1080') aspectRatio = '1:1';\nelse if (format.includes('4:5') || dimensions === '1080x1350') aspectRatio = '4:5';\nelse if (format.includes('16:9') || dimensions === '1920x1080') aspectRatio = '16:9';\n\n// Extract text content from layers\nconst headlines = [];\nconst subheadlines = [];\nlet ctaText = '';\nlet dataPoint = '';\nlet visualDescription = '';\n\nlayers.forEach(layer => {\n  const name = (layer.layer_name || '').toLowerCase();\n  const content = layer.content || '';\n  \n  if (name.includes('headline') && !name.includes('sub')) {\n    headlines.push(content);\n  } else if (name.includes('subheadline') || name.includes('sub')) {\n    subheadlines.push(content);\n  } else if (name.includes('cta') || name.includes('button')) {\n    ctaText = content;\n  } else if (name.includes('data') || name.includes('stat')) {\n    dataPoint = content;\n  } else if (layer.type === 'image_placeholder' || layer.type === 'generated_image') {\n    visualDescription = layer.image_generation_prompt || '';\n  }\n});\n\n// Build natural language prompt - NO PIXEL VALUES\nlet textPrompt = `Create a professional social media advertisement with these specifications:\n\n## IMAGE FORMAT\n- Vertical ${aspectRatio} format (${dimensions || '1080x1920'})\n- Full-screen mobile ad\n\n## BRAND COLORS (USE EXACTLY)\n- Background: ${brandStyling.background_color || brandInfo.background_color || '#0a0a0a'} (dark)\n- Accent Color: ${brandStyling.primary_accent_color || brandInfo.accent_color || '#FADC3C'} (yellow - for CTA and highlights)\n- Text: ${brandStyling.secondary_accent_color || brandInfo.secondary_color || '#FFFFFF'} (white)\n\n## CONTENT TO DISPLAY\n\n**HEADLINE (at top, large bold text):**\n${headlines.length > 0 ? headlines.join('\\n') : 'No headline'}\n\n${subheadlines.length > 0 ? `**SUBHEADLINE (below headline, accent color):**\\n${subheadlines.join('\\n')}` : ''}\n\n**VISUAL ELEMENT (center of ad):**\n${visualDescription || 'Create a relevant supporting visual'}\n\n${dataPoint ? `**DATA CALLOUT (highlighted badge):**\\n\"${dataPoint}\"\\n- Yellow background with dark text` : ''}\n\n**CTA BUTTON (bottom of ad):**\n${ctaText ? `\"${ctaText}\"` : 'Call to action'}\n- Pill-shaped button\n- Yellow background (#FADC3C) with dark text\n- Centered at bottom\n\n## DESIGN RULES\n1. Dark background throughout\n2. High contrast, readable text\n3. Clean, modern, professional look\n4. All text must be crisp and legible\n5. IMPORTANT: Do NOT include any numbers, measurements, pixel values, or technical specs as visible text\n6. Only show the headline, subheadline, data point, and CTA text specified above\n\nGenerate a complete, polished advertisement ready for social media.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  messages: [{ role: \"user\", content: textPrompt }],\n  max_tokens: 4096\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    image_prompt_text: textPrompt,\n    image_prompt_json: imageGenPrompt,\n    requested_aspect_ratio: aspectRatio\n  }\n}];"
+      },
+      "id": "11dd019e-bfe0-444d-91ca-8602dac7543a",
       "name": "Build Image Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1008,
-        192
+        -1488,
+        224
       ]
     },
     {
       "parameters": {
         "method": "POST",
         "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $json.image_request_body }}",
+        "jsonBody": "={{ JSON.stringify($json.image_request_body) }}",
         "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          },
-          "timeout": 120000
+          "timeout": 180000
         }
       },
-      "id": "77b8d01b-fd38-4293-ad25-3196553dbd4e",
-      "name": "Generate Image (NanaBanana Pro)",
+      "id": "29ba76df-45de-49f2-91e7-c5d8959c51ff",
+      "name": "Generate Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -752,
-        192
+        -1280,
+        224
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -180,15 +263,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // OpenRouter returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  \n  if (Array.isArray(images) && images.length > 0) {\n    // Get the first image\n    const firstImage = images[0];\n    \n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      \n      // Check if it's a data URL (base64)\n      if (dataUrl.startsWith('data:image/')) {\n        // Extract the base64 part after the comma\n        const base64Part = dataUrl.split(',')[1];\n        if (base64Part) {\n          imageBase64 = base64Part;\n        }\n      } else if (dataUrl.startsWith('http')) {\n        // It's a regular URL\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Debug logging\n  console.log('Found images array:', !!images);\n  console.log('Images count:', images?.length || 0);\n  console.log('Base64 starts with:', imageBase64.substring(0, 20));\n  \n} catch (e) {\n  console.log('Error parsing image response:', e.message);\n}\n\n// Clean up request bodies from previous data\nconst { image_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    image_generation_complete: true,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED',\n    image_format: 'jpeg'\n  }\n}];"
+        "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // Gemini returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  if (Array.isArray(images) && images.length > 0) {\n    const firstImage = images[0];\n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      if (dataUrl.startsWith('data:image/')) {\n        imageBase64 = dataUrl.split(',')[1];\n      } else if (dataUrl.startsWith('http')) {\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Also check content for base64 or URL\n  const content = response.choices?.[0]?.message?.content || '';\n  if (!imageBase64 && !imageUrl) {\n    const urlMatch = content.match(/https?:\\/\\/[^\\s\"']+\\.(png|jpg|jpeg|webp)/i);\n    if (urlMatch) {\n      imageUrl = urlMatch[0];\n    }\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nconst { image_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED'\n  }\n}];"
       },
-      "id": "217e1fa6-8ee9-4f9c-b288-196c49b775ae",
+      "id": "7c69232c-11da-4992-8a7a-5a3c5bab8951",
       "name": "Parse Image Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -496,
-        192
+        -1056,
+        224
       ]
     },
     {
@@ -197,53 +280,43 @@
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
+            "typeValidation": "strict"
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.generated_image_url }}",
-              "rightValue": "",
+              "id": "c1",
+              "leftValue": "={{ $json.has_image }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty"
-              },
-              "id": "d5952faf-5d72-4218-8465-2f2ea5425f5b"
-            },
-            {
-              "leftValue": "={{ $json.generated_image_base64 }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty"
-              },
-              "id": "f3ebf833-992f-4933-bcf5-fc66d674c3d3"
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
-          "combinator": "or"
+          "combinator": "and"
         },
         "options": {}
       },
-      "id": "7dbb19e5-06bb-4e98-940f-c7e0e1994c68",
+      "id": "cc655334-74fa-420b-bce8-8413ea347036",
       "name": "Check Image Result",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
+      "typeVersion": 2,
       "position": [
-        -256,
-        192
+        -832,
+        224
       ]
     },
     {
       "parameters": {
-        "jsCode": "const data = items[0].json;\n\n// Create filename\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst adId = data.ad_archive_id || 'unknown';\n\n// If we have base64, prepare binary\nif (data.generated_image_base64) {\n  let base64Data = data.generated_image_base64;\n  \n  // Remove data URL prefix if somehow still present\n  if (base64Data.includes(',')) {\n    base64Data = base64Data.split(',')[1];\n  }\n  \n  // Remove any whitespace\n  base64Data = base64Data.replace(/\\s/g, '');\n  \n  // Detect image type from base64 header\n  let mimeType = 'image/jpeg';\n  let extension = 'jpg';\n  \n  if (base64Data.startsWith('/9j/')) {\n    mimeType = 'image/jpeg';\n    extension = 'jpg';\n  } else if (base64Data.startsWith('iVBORw')) {\n    mimeType = 'image/png';\n    extension = 'png';\n  }\n  \n  const filename = `ad_${adId}_${timestamp}.${extension}`;\n  \n  // Convert base64 to Buffer\n  const binaryBuffer = Buffer.from(base64Data, 'base64');\n  \n  // Use n8n's helper to create proper binary data\n  const binaryData = await this.helpers.prepareBinaryData(\n    binaryBuffer,\n    filename,\n    mimeType\n  );\n  \n  return [{\n    json: {\n      ...data,\n      filename: filename,\n      detected_mime_type: mimeType,\n      file_size_bytes: binaryBuffer.length\n    },\n    binary: {\n      data: binaryData\n    }\n  }];\n}\n\n// If no base64 data\nreturn [{\n  json: {\n    ...data,\n    filename: `ad_${adId}_${timestamp}.jpg`,\n    error: 'No base64 data found'\n  }\n}];"
+        "jsCode": "const data = items[0].json;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst adId = data.ad_archive_id || 'unknown';\nconst conceptName = data.winning_concept?.concept_name?.replace(/\\s+/g, '_') || 'ad';\n\nif (data.generated_image_base64) {\n  let base64Data = data.generated_image_base64;\n  if (base64Data.includes(',')) base64Data = base64Data.split(',')[1];\n  base64Data = base64Data.replace(/\\s/g, '');\n  \n  let mimeType = 'image/jpeg', ext = 'jpg';\n  if (base64Data.startsWith('iVBORw')) { mimeType = 'image/png'; ext = 'png'; }\n  \n  const filename = `${conceptName}_${adId}_${timestamp}.${ext}`;\n  const buffer = Buffer.from(base64Data, 'base64');\n  \n  return [{\n    json: { ...data, filename, detected_mime_type: mimeType, file_size_bytes: buffer.length },\n    binary: { data: { data: buffer.toString('base64'), mimeType, fileName: filename } }\n  }];\n}\n\nreturn [{ json: { ...data, filename: `${conceptName}_${adId}_${timestamp}.jpg`, error: 'No base64' } }];"
       },
-      "id": "904e7522-d3d1-4783-b6c1-dcc4e77df831",
+      "id": "fb2a8a30-9595-4009-bf63-4392111d6988",
       "name": "Prepare for Upload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        0,
-        80
+        -608,
+        112
       ]
     },
     {
@@ -251,8 +324,8 @@
         "name": "={{ $json.filename }}",
         "driveId": {
           "__rl": true,
-          "value": "My Drive",
-          "mode": "name"
+          "mode": "list",
+          "value": "My Drive"
         },
         "folderId": {
           "__rl": true,
@@ -263,13 +336,13 @@
         },
         "options": {}
       },
-      "id": "17d00357-28ea-425e-be2d-d0da8c916379",
+      "id": "e99b88bf-f788-44be-ac3d-011ae51a0be7",
       "name": "Upload to Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        256,
-        80
+        -400,
+        112
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -280,41 +353,73 @@
     },
     {
       "parameters": {
-        "jsCode": "const uploadResult = items[0].json;\nconst prevData = $('Prepare for Upload').first().json;\n\n// Get the Drive file ID and construct URL\nconst fileId = uploadResult.id;\nconst driveUrl = fileId ? `https://drive.google.com/file/d/${fileId}/view` : '';\n\nreturn [{\n  json: {\n    ...prevData,\n    generated_image_url: driveUrl,\n    drive_file_id: fileId,\n    status: 'GENERATED'\n  }\n}];"
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
       },
-      "id": "bf00915f-ecfb-4036-8429-cc82d5bcff63",
+      "id": "e85e8568-f99c-4c1a-ac1f-1709ca50cffb",
       "name": "Get Shareable Link",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
       "position": [
-        512,
-        80
-      ]
+        -176,
+        112
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "c1lX68Ne53WW1ODn",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
         "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "value": "1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI",
           "mode": "list",
-          "cachedResultName": "Big Players Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+          "cachedResultName": "Big Players Ad Intelligence (Public)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Competitor_Ads",
-          "mode": "name"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Competitor_Ads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "ad_archive_id": "={{ $('When Executed by Another Workflow').first().json.ad_archive_id }}",
-            "status": "={{ $json.status }}",
-            "generated_headlines": "={{ $json.generated_headlines }}",
-            "generated_body_copy": "={{ $json.generated_body_copy }}",
-            "generated_image_prompt": "={{ $json.generated_image_prompt }}",
-            "generated_image_url": "={{ $json.generated_image_url }}",
+            "ad_archive_id": "={{ $('Parse Image Response').first().json.ad_archive_id }}",
+            "status": "GENERATED",
+            "generated_image_url": "=https://drive.google.com/file/d/{{ $json.id }}/view",
+            "generated_headlines": "={{ $('Parse Image Response').first().json.winning_concept?.copy?.headline }}",
+            "generated_body_copy": "={{ $('Parse Image Response').first().json.winning_concept?.copy?.subheadline }}",
+            "generated_cta": "={{ $('Parse Image Response').first().json.winning_concept?.copy?.cta_text }}",
+            "generated_data_point": "={{ $('Parse Image Response').first().json.winning_concept?.copy?.data_point }}",
+            "generated_hook_full": "={{ $('Parse Image Response').first().json.winning_concept?.hook?.full_hook }}",
+            "generated_hook_archetype": "={{ $('Parse Image Response').first().json.winning_concept?.hook_archetype }}",
+            "generated_primary_horseman": "={{ $('Parse Image Response').first().json.winning_concept?.primary_horseman }}",
+            "checkpoint_pain": "={{ $('Parse Image Response').first().json.winning_concept?.psychology_mapping?.pain_checkpoint }}",
+            "checkpoint_trust": "={{ $('Parse Image Response').first().json.winning_concept?.psychology_mapping?.trust_checkpoint }}",
+            "ad_concept_name": "={{ $('Parse Image Response').first().json.winning_concept?.concept_name }}",
+            "layer_count": "={{ $('Parse Image Response').first().json.image_generation_prompt?.layout_layers?.length }}",
+            "image_prompt_json": "={{ JSON.stringify($('Parse Image Response').first().json.image_generation_prompt) }}",
+            "visual_concept": "={{ $('Parse Image Response').first().json.winning_concept?.visual_concept?.description }}",
+            "one_sentence_summary": "={{ $('Parse Image Response').first().json.winning_concept?.one_sentence_summary }}",
+            "concept_ranking_score": "={{ $('Parse Ranking Response').first().json.ranking?.evaluations?.[0]?.weighted_total }}",
             "row_number": 0
           },
           "matchingColumns": [
@@ -544,7 +649,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "generated_image_url",
@@ -576,6 +682,361 @@
               "removed": false
             },
             {
+              "id": "previous_hash",
+              "displayName": "previous_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_primary_horseman",
+              "displayName": "psychology_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_value_score",
+              "displayName": "psychology_value_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_checkpoints_passed",
+              "displayName": "psychology_checkpoints_passed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_avg_checkpoint_score",
+              "displayName": "psychology_avg_checkpoint_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_hook_archetype",
+              "displayName": "psychology_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_archetype",
+              "displayName": "generated_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hook_type",
+              "displayName": "hook_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_primary_horseman",
+              "displayName": "generated_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_contrast_mechanism",
+              "displayName": "generated_contrast_mechanism",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_passes_checkpoints",
+              "displayName": "quality_passes_checkpoints",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_scroll_stop_power",
+              "displayName": "quality_scroll_stop_power",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_conversion_potential",
+              "displayName": "quality_conversion_potential",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "angle",
+              "displayName": "angle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "funnel_stage",
+              "displayName": "funnel_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "swipe_file_notes",
+              "displayName": "swipe_file_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_cta",
+              "displayName": "generated_cta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_data_point",
+              "displayName": "generated_data_point",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checkpoint_pain",
+              "displayName": "checkpoint_pain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checkpoint_trust",
+              "displayName": "checkpoint_trust",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ad_concept_name",
+              "displayName": "ad_concept_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "layer_count",
+              "displayName": "layer_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_prompt_json",
+              "displayName": "image_prompt_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "collation_id",
+              "displayName": "collation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_text",
+              "displayName": "cta_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_url",
+              "displayName": "link_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_description",
+              "displayName": "link_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cards_count",
+              "displayName": "cards_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "visual_concept",
+              "displayName": "visual_concept",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "one_sentence_summary",
+              "displayName": "one_sentence_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "concept_ranking_score",
+              "displayName": "concept_ranking_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
               "id": "row_number",
               "displayName": "row_number",
               "required": false,
@@ -590,15 +1051,17 @@
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
-        "options": {}
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
       },
-      "id": "9bf4b0d2-1472-4f75-8385-d8bc2a71875d",
-      "name": "Update Google Sheet",
+      "id": "e61a8007-4bd3-4985-9b16-19b7c49bcfaf",
+      "name": "Update Google Sheet - Success",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.6,
+      "typeVersion": 4.4,
       "position": [
-        752,
-        80
+        48,
+        112
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -609,60 +1072,15 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.WORKFLOW_4_WEBHOOK_URL || 'https://your-n8n-instance/webhook/ad-notifier' }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {}
+        "jsCode": "return [{ json: { ...items[0].json, status: 'COPY_ONLY_NO_IMAGE' } }];"
       },
-      "id": "10eb746b-952a-47c9-a0df-ba32ee2b648b",
-      "name": "Trigger Notifier (Optional)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "id": "adc4485a-6a9f-42ba-9e5d-e1160320bdb0",
+      "name": "Skip - No Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1008,
-        80
-      ],
-      "disabled": true
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "1",
-              "name": "status",
-              "value": "COPY_ONLY",
-              "type": "string"
-            },
-            {
-              "id": "2",
-              "name": "generated_image_url",
-              "value": "",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "ddf9f13e-2a50-4c38-b8d2-4dbc4708ba60",
-      "name": "Skip - No Image Generated",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        0,
-        288
+        -608,
+        320
       ]
     },
     {
@@ -670,24 +1088,35 @@
         "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI",
+          "value": "1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI",
           "mode": "list",
-          "cachedResultName": "Big Players Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18pBViApoBkghb8ga0xnyyStl0NTUDYivwSE_25KTzuI/edit?usp=drivesdk"
+          "cachedResultName": "Big Players Ad Intelligence (Public)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Competitor_Ads",
-          "mode": "name"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Competitor_Ads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
             "ad_archive_id": "={{ $json.ad_archive_id }}",
             "status": "={{ $json.status }}",
-            "generated_headlines": "={{ $json.generated_headlines }}",
-            "generated_body_copy": "={{ $json.generated_body_copy }}",
-            "generated_image_prompt": "={{ $json.generated_image_prompt }}",
+            "generated_headlines": "={{ $json.winning_concept?.copy?.headline }}",
+            "generated_body_copy": "={{ $json.winning_concept?.copy?.subheadline }}",
+            "generated_cta": "={{ $json.winning_concept?.copy?.cta_text }}",
+            "generated_data_point": "={{ $json.winning_concept?.copy?.data_point }}",
+            "generated_hook_full": "={{ $json.winning_concept?.hook?.full_hook }}",
+            "generated_hook_archetype": "={{ $json.winning_concept?.hook_archetype }}",
+            "generated_primary_horseman": "={{ $json.winning_concept?.primary_horseman }}",
+            "checkpoint_pain": "={{ $json.winning_concept?.psychology_mapping?.pain_checkpoint }}",
+            "checkpoint_trust": "={{ $json.winning_concept?.psychology_mapping?.trust_checkpoint }}",
+            "ad_concept_name": "={{ $json.winning_concept?.concept_name }}",
+            "layer_count": "={{ $json.image_generation_prompt?.layout_layers?.length }}",
+            "image_prompt_json": "={{ JSON.stringify($json.image_generation_prompt) }}",
             "row_number": 0
           },
           "matchingColumns": [
@@ -917,7 +1346,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "generated_image_url",
@@ -950,6 +1380,365 @@
               "removed": false
             },
             {
+              "id": "previous_hash",
+              "displayName": "previous_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_primary_horseman",
+              "displayName": "psychology_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_value_score",
+              "displayName": "psychology_value_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_checkpoints_passed",
+              "displayName": "psychology_checkpoints_passed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_avg_checkpoint_score",
+              "displayName": "psychology_avg_checkpoint_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_hook_archetype",
+              "displayName": "psychology_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_archetype",
+              "displayName": "generated_hook_archetype",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hook_type",
+              "displayName": "hook_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_primary_horseman",
+              "displayName": "generated_primary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_contrast_mechanism",
+              "displayName": "generated_contrast_mechanism",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_passes_checkpoints",
+              "displayName": "quality_passes_checkpoints",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_scroll_stop_power",
+              "displayName": "quality_scroll_stop_power",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_conversion_potential",
+              "displayName": "quality_conversion_potential",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "angle",
+              "displayName": "angle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "funnel_stage",
+              "displayName": "funnel_stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "swipe_file_notes",
+              "displayName": "swipe_file_notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_cta",
+              "displayName": "generated_cta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_data_point",
+              "displayName": "generated_data_point",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_hook_full",
+              "displayName": "generated_hook_full",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checkpoint_pain",
+              "displayName": "checkpoint_pain",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "checkpoint_trust",
+              "displayName": "checkpoint_trust",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ad_concept_name",
+              "displayName": "ad_concept_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "layer_count",
+              "displayName": "layer_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "image_prompt_json",
+              "displayName": "image_prompt_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generated_image_url",
+              "displayName": "generated_image_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "collation_id",
+              "displayName": "collation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cta_text",
+              "displayName": "cta_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_url",
+              "displayName": "link_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_description",
+              "displayName": "link_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cards_count",
+              "displayName": "cards_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "visual_concept",
+              "displayName": "visual_concept",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "one_sentence_summary",
+              "displayName": "one_sentence_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "concept_ranking_score",
+              "displayName": "concept_ranking_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
               "id": "row_number",
               "displayName": "row_number",
               "required": false,
@@ -966,13 +1755,13 @@
         },
         "options": {}
       },
-      "id": "3a65b3f3-bec0-4b6d-97a5-6a72c0f36a75",
+      "id": "2597aeb9-86a0-4677-a839-1986857d5694",
       "name": "Update Sheet - Copy Only",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.6,
+      "typeVersion": 4.4,
       "position": [
-        256,
-        288
+        -400,
+        320
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -980,90 +1769,132 @@
           "name": "Google Sheets account matthew@emerald"
         }
       }
-    },
-    {
-      "parameters": {
-        "inputSource": "passthrough"
-      },
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        -2848,
-        48
-      ],
-      "id": "c56d02b7-be68-4b38-9d91-c70c272ff8ba",
-      "name": "When Executed by Another Workflow"
     }
   ],
   "pinData": {},
   "connections": {
-    "Webhook Trigger": {
+    "When Executed by Another Workflow": {
       "main": [
         [
           {
-            "node": "Load Brand Guidelines",
+            "node": "Read Brand Guidelines",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Load Brand Guidelines": {
+    "Read Brand Guidelines": {
       "main": [
         [
           {
-            "node": "Merge Ad + Brand Data",
+            "node": "Extract Brand Info",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Merge Ad + Brand Data": {
+    "Extract Brand Info": {
       "main": [
         [
           {
-            "node": "Build Copy Generation Request",
+            "node": "Build Concept Generation Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Copy Generation Request": {
+    "Build Concept Generation Request": {
       "main": [
         [
           {
-            "node": "Generate Ad Copy",
+            "node": "Generate Concepts (Claude)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Ad Copy": {
+    "Generate Concepts (Claude)": {
       "main": [
         [
           {
-            "node": "Parse Generated Copy",
+            "node": "Parse Concepts Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Generated Copy": {
+    "Parse Concepts Response": {
       "main": [
         [
           {
-            "node": "Build Image Prompt",
+            "node": "Build Ranking Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build Image Prompt": {
+    "Build Ranking Request": {
+      "main": [
+        [
+          {
+            "node": "Rank Concepts (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Concepts (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Parse Ranking Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ranking Response": {
+      "main": [
+        [
+          {
+            "node": "Build JSON Construction Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build JSON Construction Request": {
+      "main": [
+        [
+          {
+            "node": "Construct JSON (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construct JSON (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Parse Final JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Final JSON": {
       "main": [
         [
           {
@@ -1078,14 +1909,14 @@
       "main": [
         [
           {
-            "node": "Generate Image (NanaBanana Pro)",
+            "node": "Generate Image",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Image (NanaBanana Pro)": {
+    "Generate Image": {
       "main": [
         [
           {
@@ -1118,7 +1949,7 @@
         ],
         [
           {
-            "node": "Skip - No Image Generated",
+            "node": "Skip - No Image",
             "type": "main",
             "index": 0
           }
@@ -1151,40 +1982,18 @@
       "main": [
         [
           {
-            "node": "Update Google Sheet",
+            "node": "Update Google Sheet - Success",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Google Sheet": {
-      "main": [
-        [
-          {
-            "node": "Trigger Notifier (Optional)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Skip - No Image Generated": {
+    "Skip - No Image": {
       "main": [
         [
           {
             "node": "Update Sheet - Copy Only",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "When Executed by Another Workflow": {
-      "main": [
-        [
-          {
-            "node": "Load Brand Guidelines",
             "type": "main",
             "index": 0
           }
@@ -1196,11 +2005,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "03eb08ce-0f4e-42ed-a7f2-56481e3f3bbc",
+  "versionId": "324f55ac-134d-40dc-8bc4-c35a85fa1437",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
   },
-  "id": "eQzgw4yE2HHwmaMX",
+  "id": "7pSG9edVFzXkFO9W",
   "tags": []
 }
