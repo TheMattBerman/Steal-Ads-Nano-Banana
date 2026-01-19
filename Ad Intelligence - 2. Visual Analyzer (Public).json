@@ -1,15 +1,15 @@
 {
-  "name": "Ad Intelligence - 2. Visual Analyzer (Public V2)",
+  "name": "Ad Intelligence - 2. Visual Analyzer (Public V3)",
   "nodes": [
     {
       "parameters": {},
-      "id": "5af863d3-0b58-40eb-ad6f-73515df5e005",
+      "id": "0fd9517d-cb86-492f-b645-1d5d74c77ce1",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -2128,
-        432
+        -1248,
+        32
       ]
     },
     {
@@ -35,26 +35,26 @@
         },
         "options": {}
       },
-      "id": "8c02a665-3db2-4c47-bca7-7fb805c6a7b1",
+      "id": "3271efc1-b5e1-483f-832f-fcf556fc455a",
       "name": "Check for Image URL",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -1904,
-        432
+        -1024,
+        32
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = items[0].json;\n\nreturn [{\n  json: {\n    ...data,\n    download_url: data.image_url || data.video_thumbnail_url\n  }\n}];"
       },
-      "id": "764ef4fb-d8e6-4dd6-9384-0af5b2cb5741",
+      "id": "6e0014d0-1055-41f1-941e-fc99c9c0623a",
       "name": "Prepare Image URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1696,
-        320
+        -800,
+        -80
       ]
     },
     {
@@ -62,26 +62,26 @@
         "url": "={{ $json.download_url }}",
         "options": {}
       },
-      "id": "e92e928c-a47e-4f2f-ac35-a3b333ae58e3",
+      "id": "37e80ebc-b110-4384-a9f4-8dbc7b9b8006",
       "name": "Download Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1472,
-        320
+        -592,
+        -80
       ]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// Build Gemini Request - V5: Uses VisionStruct for exhaustive visual analysis\n// =============================================================================\n\nconst prevData = $('Prepare Image URL').first().json;\nconst binaryData = items[0].binary?.data;\n\nif (!binaryData) {\n  return [{\n    json: {\n      ...prevData,\n      error: 'No binary data received from image download'\n    }\n  }];\n}\n\nconst base64Image = binaryData.data;\nconst mimeType = binaryData.mimeType || 'image/jpeg';\n\nconst prompt = `ROLE & OBJECTIVE\n\nYou are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Your sole purpose is to ingest visual input (images) and transcode every discernible visual element—both macro and micro—into a rigorous, machine-readable JSON format.\n\nCORE DIRECTIVE\nDo not summarize. Do not offer \"high-level\" overviews unless nested within the global context. You must capture 100% of the visual data available in the image. If a detail exists in pixels, it must exist in your JSON output. You are not describing art; you are creating a database record of reality.\n\nANALYSIS PROTOCOL\n\nBefore generating the final JSON, perform a silent \"Visual Sweep\" (do not output this):\n\n1. Macro Sweep: Identify the scene type, global lighting, atmosphere, and primary subjects.\n2. Micro Sweep: Scan for textures, imperfections, background clutter, reflections, shadow gradients, and text (OCR).\n3. Relationship Sweep: Map the spatial and semantic connections between objects.\n\nOUTPUT FORMAT (STRICT)\n\nReturn ONLY a single valid JSON object:\n\n{\n  \"meta\": {\n    \"image_quality\": \"Low/Medium/High\",\n    \"image_type\": \"Photo/Illustration/Diagram/Screenshot/Composite/Advertisement\",\n    \"resolution_estimation\": \"Approximate resolution\",\n    \"aspect_ratio\": \"9:16/16:9/1:1/4:5/etc\"\n  },\n  \"global_context\": {\n    \"scene_description\": \"Comprehensive paragraph describing the entire scene.\",\n    \"time_of_day\": \"Lighting condition\",\n    \"weather_atmosphere\": \"Foggy/Clear/Studio/Digital\",\n    \"lighting\": {\n      \"source\": \"Sunlight/Artificial/Mixed/Digital\",\n      \"direction\": \"Top-down/Backlit/Front-lit/Ambient\",\n      \"quality\": \"Hard/Soft/Diffused/Flat\",\n      \"color_temp\": \"Warm/Cool/Neutral\"\n    }\n  },\n  \"color_palette\": {\n    \"dominant_hex_estimates\": [\"#RRGGBB\", \"#RRGGBB\"],\n    \"accent_colors\": [\"#RRGGBB\", \"#RRGGBB\"],\n    \"background_color\": \"#RRGGBB\",\n    \"text_colors\": [\"#RRGGBB\"],\n    \"contrast_level\": \"High/Low/Medium\"\n  },\n  \"composition\": {\n    \"camera_angle\": \"Eye-level/High-angle/Low-angle/Flat-digital\",\n    \"framing\": \"Close-up/Wide-shot/Medium-shot/Full-frame\",\n    \"depth_of_field\": \"Shallow/Deep/Flat-2D\",\n    \"focal_point\": \"Primary element drawing the eye\",\n    \"visual_hierarchy\": [\"First element seen\", \"Second\", \"Third\"],\n    \"layout_type\": \"Centered/Split/Layered/Grid/Asymmetric/Stacked\"\n  },\n  \"objects\": [\n    {\n      \"id\": \"obj_001\",\n      \"label\": \"Object Name\",\n      \"category\": \"Person/UI-Element/Text-Block/Button/Icon/Image/Shape/Logo/Product\",\n      \"location\": \"Center/Top-Left/Top-Center/Bottom-Right/etc\",\n      \"prominence\": \"Foreground/Midground/Background\",\n      \"bounding_box_estimate\": {\n        \"top_percent\": 10,\n        \"left_percent\": 5,\n        \"width_percent\": 90,\n        \"height_percent\": 20\n      },\n      \"visual_attributes\": {\n        \"color\": \"Detailed color with hex\",\n        \"texture\": \"Rough/Smooth/Flat/Gradient\",\n        \"material\": \"Digital/Photo/Illustration\",\n        \"state\": \"Static/Highlighted/Dimmed\",\n        \"dimensions_relative\": \"Large/Medium/Small\"\n      },\n      \"micro_details\": [\"shadows\", \"borders\", \"effects\"],\n      \"pose_or_orientation\": \"Orientation description\",\n      \"text_content\": \"Exact text if present\",\n      \"styling\": {\n        \"font_family\": \"Sans-serif/Serif/Display\",\n        \"font_weight\": \"Light/Regular/Bold/Black\",\n        \"font_size_relative\": \"XS/S/M/L/XL/XXL\",\n        \"text_transform\": \"Normal/Uppercase\",\n        \"letter_spacing\": \"Tight/Normal/Wide\",\n        \"effects\": [\"Shadow\", \"Outline\", \"None\"]\n      }\n    }\n  ],\n  \"text_ocr\": {\n    \"present\": true,\n    \"content\": [\n      {\n        \"text\": \"Exact text\",\n        \"role\": \"Headline/Subheadline/Body/CTA/Label/Data-point\",\n        \"location\": \"Position\",\n        \"font_style\": \"Serif/Sans-serif/Bold\",\n        \"font_size_relative\": \"XS/S/M/L/XL/XXL\",\n        \"color\": \"#RRGGBB\",\n        \"legibility\": \"Clear/Partially obscured\"\n      }\n    ]\n  },\n  \"ui_elements\": {\n    \"has_buttons\": true,\n    \"buttons\": [\n      {\n        \"text\": \"Button text\",\n        \"style\": \"Filled/Outlined/Pill/Rounded\",\n        \"color\": \"#RRGGBB\",\n        \"text_color\": \"#RRGGBB\",\n        \"position\": \"Location\"\n      }\n    ],\n    \"has_icons\": false,\n    \"has_charts_or_data_viz\": false,\n    \"has_screenshots\": false,\n    \"has_mockups\": false\n  },\n  \"people\": {\n    \"present\": false,\n    \"count\": 0,\n    \"details\": []\n  },\n  \"semantic_relationships\": [\n    \"Object A is positioned above Object B\",\n    \"Text explains visual below it\"\n  ],\n  \"ad_specific_observations\": {\n    \"apparent_purpose\": \"Lead gen/Brand awareness/Product showcase\",\n    \"call_to_action_present\": true,\n    \"social_proof_elements\": [],\n    \"urgency_elements\": [],\n    \"trust_elements\": []\n  }\n}\n\nCRITICAL:\n- Extract ACTUAL hex colors\n- Capture ALL text exactly\n- List EVERY object\n- Provide bounding box estimates\n- Null for non-applicable fields\n\nOutput ONLY the JSON.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-preview\",\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        { type: \"text\", text: prompt },\n        { type: \"image_url\", image_url: { url: `data:${mimeType};base64,${base64Image}` } }\n      ]\n    }\n  ],\n  max_tokens: 4000,\n  temperature: 0.2\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    gemini_request_body: requestBody,\n    image_base64_length: base64Image.length\n  }\n}];"
+        "jsCode": "// =============================================================================\n// Build Gemini Request - V6: Enhanced VisionStruct with Vibe Capture\n// =============================================================================\n\nconst prevData = $('Prepare Image URL').first().json;\nconst binaryData = items[0].binary?.data;\n\nif (!binaryData) {\n  return [{\n    json: {\n      ...prevData,\n      error: 'No binary data received from image download'\n    }\n  }];\n}\n\nconst base64Image = binaryData.data;\nconst mimeType = binaryData.mimeType || 'image/jpeg';\n\nconst prompt = `ROLE & OBJECTIVE\n\nYou are VisionStruct, an advanced Computer Vision & Data Serialization Engine. Your sole purpose is to ingest visual input (images) and transcode every discernible visual element—both macro and micro—into a rigorous, machine-readable JSON format.\n\nCORE DIRECTIVE\nDo not summarize. Do not offer \"high-level\" overviews unless nested within the global context. You must capture 100% of the visual data available in the image. If a detail exists in pixels, it must exist in your JSON output. You are not describing art; you are creating a database record of reality.\n\nCRITICAL: For ads, you must ALSO capture the \"VIBE\" - the intangible feeling that makes certain ads feel authentic, relatable, or premium. This is what separates stock photo ads from scroll-stopping content.\n\nANALYSIS PROTOCOL\n\nBefore generating the final JSON, perform a silent \"Visual Sweep\" (do not output this):\n\n1. Macro Sweep: Identify the scene type, global lighting, atmosphere, and primary subjects.\n2. Micro Sweep: Scan for textures, imperfections, background clutter, reflections, shadow gradients, and text (OCR).\n3. Relationship Sweep: Map the spatial and semantic connections between objects.\n4. Vibe Sweep: What makes this image FEEL the way it does? Is it authentic or staged? UGC or professional? Intimate or distant?\n\nOUTPUT FORMAT (STRICT)\n\nReturn ONLY a single valid JSON object:\n\n{\n  \"meta\": {\n    \"image_quality\": \"Low/Medium/High\",\n    \"image_type\": \"Photo/Illustration/Diagram/Screenshot/Composite/Advertisement\",\n    \"resolution_estimation\": \"Approximate resolution\",\n    \"aspect_ratio\": \"9:16/16:9/1:1/4:5/etc\"\n  },\n  \"global_context\": {\n    \"scene_description\": \"Comprehensive paragraph describing the entire scene.\",\n    \"time_of_day\": \"Lighting condition\",\n    \"weather_atmosphere\": \"Foggy/Clear/Studio/Digital\",\n    \"lighting\": {\n      \"source\": \"Sunlight/Artificial/Mixed/Digital\",\n      \"direction\": \"Top-down/Backlit/Front-lit/Ambient\",\n      \"quality\": \"Hard/Soft/Diffused/Flat\",\n      \"color_temp\": \"Warm/Cool/Neutral\"\n    }\n  },\n  \"color_palette\": {\n    \"dominant_hex_estimates\": [\"#RRGGBB\", \"#RRGGBB\"],\n    \"accent_colors\": [\"#RRGGBB\", \"#RRGGBB\"],\n    \"background_color\": \"#RRGGBB\",\n    \"text_colors\": [\"#RRGGBB\"],\n    \"contrast_level\": \"High/Low/Medium\"\n  },\n  \"composition\": {\n    \"camera_angle\": \"Eye-level/High-angle/Low-angle/Flat-digital\",\n    \"framing\": \"Close-up/Wide-shot/Medium-shot/Full-frame\",\n    \"depth_of_field\": \"Shallow/Deep/Flat-2D\",\n    \"focal_point\": \"Primary element drawing the eye\",\n    \"visual_hierarchy\": [\"First element seen\", \"Second\", \"Third\"],\n    \"layout_type\": \"Centered/Split/Layered/Grid/Asymmetric/Stacked\"\n  },\n  \"photography\": {\n    \"style\": \"UGC-selfie/Mirror-selfie/Professional-studio/Candid-street/Lifestyle-editorial/Product-shot/Screen-recording/Stock-photo/AI-generated\",\n    \"framing_technique\": \"Description of how the shot is framed\",\n    \"quality_feel\": \"iPhone-authentic/DSLR-polished/Webcam-casual/Ring-light-influencer/Natural-messy/Studio-perfect\",\n    \"camera_position\": \"Selfie-arm/Tripod/Handheld/Screen-capture/Drone/etc\",\n    \"authenticity_markers\": [\"List of details that make it feel real or staged\"],\n    \"is_ugc\": true\n  },\n  \"the_vibe\": {\n    \"energy\": \"Description of the energy\",\n    \"mood\": \"Primary emotional mood\",\n    \"aesthetic\": \"Visual aesthetic category\",\n    \"authenticity_level\": \"Staged-polished/Semi-staged/Authentic-candid/Raw-unfiltered\",\n    \"intimacy_level\": \"Private-moment-shared/Public-broadcast/Professional-distance/Friend-talking-to-friend\",\n    \"story_implied\": \"What story does this image tell?\",\n    \"platform_native_feel\": \"TikTok-native/Instagram-story/LinkedIn-professional/Facebook-ad/YouTube-thumbnail/Twitter-thread\",\n    \"text_overlay_style\": \"Caption-storytelling/Headline-only/No-text/Meme-format/Data-callout\"\n  },\n  \"critical_elements\": {\n    \"what_makes_it_authentic\": \"Specific details that create authenticity\",\n    \"composition_signature\": \"THE key composition choice that defines this image\",\n    \"texture_and_environment\": \"Details about the environment that add realism\",\n    \"human_element\": \"How people appear if present\"\n  },\n  \"what_makes_it_work\": {\n    \"primary_hook\": \"THE one thing that makes you stop scrolling\",\n    \"emotional_trigger\": \"What emotion does this create and how?\",\n    \"trust_builder\": \"What makes you believe/trust this?\",\n    \"scroll_stop_factor\": \"Why would someone stop scrolling for this?\"\n  },\n  \"objects\": [\n    {\n      \"id\": \"obj_001\",\n      \"label\": \"Object Name\",\n      \"category\": \"Person/UI-Element/Text-Block/Button/Icon/Image/Shape/Logo/Product\",\n      \"location\": \"Center/Top-Left/Top-Center/Bottom-Right/etc\",\n      \"prominence\": \"Foreground/Midground/Background\",\n      \"bounding_box_estimate\": {\n        \"top_percent\": 10,\n        \"left_percent\": 5,\n        \"width_percent\": 90,\n        \"height_percent\": 20\n      },\n      \"visual_attributes\": {\n        \"color\": \"Detailed color with hex\",\n        \"texture\": \"Rough/Smooth/Flat/Gradient\",\n        \"material\": \"Digital/Photo/Illustration\",\n        \"state\": \"Static/Highlighted/Dimmed\",\n        \"dimensions_relative\": \"Large/Medium/Small\"\n      },\n      \"micro_details\": [\"shadows\", \"borders\", \"effects\"],\n      \"text_content\": \"Exact text if present\",\n      \"styling\": {\n        \"font_family\": \"Sans-serif/Serif/Display\",\n        \"font_weight\": \"Light/Regular/Bold/Black\",\n        \"font_size_relative\": \"XS/S/M/L/XL/XXL\",\n        \"text_transform\": \"Normal/Uppercase\",\n        \"effects\": [\"Shadow\", \"Outline\", \"None\"]\n      }\n    }\n  ],\n  \"text_ocr\": {\n    \"present\": true,\n    \"content\": [\n      {\n        \"text\": \"Exact text\",\n        \"role\": \"Headline/Subheadline/Body/CTA/Label/Data-point/Story-caption\",\n        \"location\": \"Position\",\n        \"font_style\": \"Serif/Sans-serif/Bold\",\n        \"font_size_relative\": \"XS/S/M/L/XL/XXL\",\n        \"color\": \"#RRGGBB\",\n        \"legibility\": \"Clear/Partially obscured\"\n      }\n    ],\n    \"copy_structure\": \"Headline-only/Headline-subhead/Story-multi-line/Caption-native/Data-focused\"\n  },\n  \"ui_elements\": {\n    \"has_buttons\": true,\n    \"buttons\": [\n      {\n        \"text\": \"Button text\",\n        \"style\": \"Filled/Outlined/Pill/Rounded\",\n        \"color\": \"#RRGGBB\",\n        \"text_color\": \"#RRGGBB\",\n        \"position\": \"Location\"\n      }\n    ],\n    \"has_icons\": false,\n    \"has_charts_or_data_viz\": false\n  },\n  \"people\": {\n    \"present\": false,\n    \"count\": 0,\n    \"details\": [],\n    \"pose_description\": \"Description of how person is posed if present\",\n    \"expression\": \"Facial expression if visible\",\n    \"eye_contact\": \"With-camera/Away/N-A\"\n  },\n  \"semantic_relationships\": [\n    \"Object A is positioned above Object B\",\n    \"Text explains visual below it\"\n  ],\n  \"ad_specific_observations\": {\n    \"apparent_purpose\": \"Lead gen/Brand awareness/Product showcase\",\n    \"call_to_action_present\": true,\n    \"social_proof_elements\": [],\n    \"urgency_elements\": [],\n    \"trust_elements\": [],\n    \"native_platform_optimized\": \"Which platform this feels optimized for\"\n  }\n}\n\nCRITICAL:\n- Extract ACTUAL hex colors\n- Capture ALL text exactly\n- List EVERY object\n- Provide bounding box estimates\n- Null for non-applicable fields\n- For ads: DEEPLY analyze the VIBE - is this UGC? Stock? Professional? What makes it FEEL authentic or not?\n- The \"photography\", \"the_vibe\", \"critical_elements\", and \"what_makes_it_work\" sections are CRITICAL for ad recreation\n\nOutput ONLY the JSON.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-flash-preview\",\n  messages: [\n    {\n      role: \"user\",\n      content: [\n        { type: \"text\", text: prompt },\n        { type: \"image_url\", image_url: { url: `data:${mimeType};base64,${base64Image}` } }\n      ]\n    }\n  ],\n  max_tokens: 16000,\n  temperature: 0.2\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    gemini_request_body: requestBody,\n    image_base64_length: base64Image.length\n  }\n}];"
       },
-      "id": "8783f84d-e2f4-48de-a00a-a53dcaf49547",
+      "id": "fde0a774-3712-412e-aaa6-3d50a6dea92c",
       "name": "Build Gemini Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1248,
-        320
+        -368,
+        -80
       ]
     },
     {
@@ -97,45 +97,39 @@
           "timeout": 120000
         }
       },
-      "id": "48a0598f-9164-4a64-b8f4-d8f8906259ad",
+      "id": "e3bd1240-c2ad-4e5a-a844-73ad820ad754",
       "name": "Gemini Vision Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1024,
-        320
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "FoHuYOrModyYssj3",
-          "name": "OpenRouter"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const prevData = $('Build Gemini Request').first().json;\nconst response = items[0].json;\n\nlet visionData = {};\n\ntry {\n  let content = response.choices?.[0]?.message?.content || '';\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  visionData = JSON.parse(content);\n} catch (e) {\n  console.log('Error parsing vision response:', e.message);\n  visionData = {\n    error: 'Failed to parse response',\n    raw_content: response.choices?.[0]?.message?.content?.substring(0, 500)\n  };\n}\n\nconst { gemini_request_body, image_base64_length, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    vision_json: visionData\n  }\n}];"
-      },
-      "id": "4e6c33fe-057d-4e54-b3f9-aa659778c967",
-      "name": "Parse Gemini Response",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -816,
-        320
+        -144,
+        -80
       ]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// Build Marketing Request - Psychology Analysis (Kallaway Framework)\n// =============================================================================\n\nconst prevData = $('Parse Gemini Response').first().json;\nconst visionJson = prevData.vision_json || {};\nconst bodyText = prevData.body_text || '';\n\nconst prompt = `You are an expert marketing strategist analyzing a competitor ad using the Kallaway Psychology Framework.\n\n## VISIONSTRUCT ANALYSIS OF THE AD\n${JSON.stringify(visionJson, null, 2)}\n\n## AD COPY\n${bodyText || 'No text available'}\n\n## ANALYSIS REQUIRED\n\nProvide comprehensive analysis in this JSON structure:\n\n{\n  \"tactical_analysis\": {\n    \"hook_type\": \"curiosity_gap|fear|social_proof|contrarian|storytelling|urgency|authority\",\n    \"hook_analysis\": \"Why this hook works\",\n    \"angle\": \"educational|emotional|aspirational|fear-based|social|authority\",\n    \"offer_type\": \"free_trial|discount|lead_magnet|direct_sale|waitlist|community\",\n    \"funnel_stage\": \"TOFU|MOFU|BOFU\",\n    \"emotional_triggers\": [\"list\", \"of\", \"emotions\"],\n    \"key_value_proposition\": \"Core promise in one sentence\"\n  },\n  \n  \"psychology_analysis\": {\n    \"four_horsemen\": {\n      \"primary\": \"Money|Time|Health|Status\",\n      \"primary_evidence\": \"How the ad targets this desire\",\n      \"secondary\": \"Money|Time|Health|Status|None\"\n    },\n    \"six_checkpoints\": {\n      \"pain_acceptance\": { \"score\": 8, \"present\": true, \"mechanism\": \"How it triggers pain\" },\n      \"trust_credibility\": { \"score\": 7, \"present\": true, \"mechanism\": \"How it builds trust\" },\n      \"contrarian_plan\": { \"score\": 6, \"present\": true, \"mechanism\": \"How it differentiates\" },\n      \"likability\": { \"score\": 8, \"present\": true, \"mechanism\": \"What makes it human\" },\n      \"rehooking\": { \"score\": 7, \"present\": true, \"mechanism\": \"How it maintains interest\" },\n      \"clear_cta\": { \"score\": 9, \"present\": true, \"mechanism\": \"The call to action\" },\n      \"total_checkpoints_passed\": 6,\n      \"average_checkpoint_score\": 7.5\n    },\n    \"hook_psychology\": {\n      \"archetype\": \"Fortune Teller|Experimentor|Teacher|Magician|Investigator|Contrarian\",\n      \"uses_three_step_structure\": true,\n      \"lean_in\": \"Pattern interrupt element\",\n      \"interjection\": \"Pivot word/phrase\",\n      \"snapback\": \"Contrarian redirect\"\n    },\n    \"one_standard_deviation\": \"too_direct|perfect|unclear\",\n    \"one_std_explanation\": \"Is it one step from core desire?\"\n  },\n  \n  \"swipe_file_notes\": \"Comprehensive notes for recreating success.\",\n  \n  \"replication_blueprint\": {\n    \"visual_must_keep\": [\"structural elements to preserve\"],\n    \"visual_can_modify\": [\"elements that can change\"],\n    \"copy_must_keep\": [\"copy patterns to preserve\"],\n    \"psychology_to_replicate\": \"Core mechanism to preserve\"\n  }\n}\n\nOutput ONLY the JSON.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.7\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    marketing_request_body: requestBody\n  }\n}];"
+        "jsCode": "const prevData = $('Build Gemini Request').first().json;\nconst response = items[0].json;\n\nlet visionData = {};\nlet parseError = null;\n\ntry {\n  let content = response.choices?.[0]?.message?.content || '';\n  console.log('Raw content length:', content.length);\n  console.log('Finish reason:', response.choices?.[0]?.finish_reason);\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    visionData = JSON.parse(jsonMatch[0]);\n  } else {\n    throw new Error('No JSON object found in response');\n  }\n} catch (e) {\n  console.log('Error parsing vision response:', e.message);\n  parseError = e.message;\n  const rawContent = response.choices?.[0]?.message?.content || '';\n  visionData = {\n    error: 'Failed to parse response',\n    parse_error: parseError,\n    raw_content_length: rawContent.length,\n    raw_content_preview: rawContent.substring(0, 1000),\n    finish_reason: response.choices?.[0]?.finish_reason\n  };\n}\n\nconst aspectRatio = visionData.meta?.aspect_ratio || '9:16';\nconst bgType = visionData.global_context?.weather_atmosphere || '';\nconst backgroundType = bgType.includes('Studio') || bgType.includes('Digital') ? 'solid_color' : 'photo';\nconst hasPhoto = visionData.people?.present || (visionData.objects || []).some(o => o.category === 'Person' || o.material === 'Photo');\n\nconst { gemini_request_body, image_base64_length, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    vision_json: visionData,\n    detected_aspect_ratio: aspectRatio,\n    detected_background_type: backgroundType,\n    detected_has_photo: hasPhoto,\n    vision_parse_error: parseError\n  }\n}];"
       },
-      "id": "25752d38-bf5d-43ae-b304-6f6474e0a517",
+      "id": "6be3a151-5624-41ae-87f0-f59752c63785",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prevData = $('Parse Gemini Response').first().json;\nconst visionJson = prevData.vision_json || {};\nconst bodyText = prevData.body_text || '';\n\nconst prompt = `You are an expert marketing strategist analyzing a competitor ad using the Kallaway Psychology Framework.\n\n## VISIONSTRUCT ANALYSIS OF THE AD\n${JSON.stringify(visionJson, null, 2)}\n\n## AD COPY\n${bodyText || 'No text available'}\n\n## ANALYSIS REQUIRED\n\nProvide comprehensive analysis in this JSON structure:\n\n{\n  \"tactical_analysis\": {\n    \"hook_type\": \"curiosity_gap|fear|social_proof|contrarian|storytelling|urgency|authority\",\n    \"hook_analysis\": \"Why this hook works\",\n    \"angle\": \"educational|emotional|aspirational|fear-based|social|authority\",\n    \"offer_type\": \"free_trial|discount|lead_magnet|direct_sale|waitlist|community\",\n    \"funnel_stage\": \"TOFU|MOFU|BOFU\",\n    \"emotional_triggers\": [\"list\", \"of\", \"emotions\"],\n    \"key_value_proposition\": \"Core promise in one sentence\"\n  },\n  \"psychology_analysis\": {\n    \"four_horsemen\": {\n      \"primary\": \"Money|Time|Health|Status\",\n      \"primary_evidence\": \"How the ad targets this desire\",\n      \"secondary\": \"Money|Time|Health|Status|None\"\n    },\n    \"six_checkpoints\": {\n      \"pain_acceptance\": { \"score\": 8, \"present\": true, \"mechanism\": \"How it triggers pain\" },\n      \"trust_credibility\": { \"score\": 7, \"present\": true, \"mechanism\": \"How it builds trust\" },\n      \"contrarian_plan\": { \"score\": 6, \"present\": true, \"mechanism\": \"How it differentiates\" },\n      \"likability\": { \"score\": 8, \"present\": true, \"mechanism\": \"What makes it human\" },\n      \"rehooking\": { \"score\": 7, \"present\": true, \"mechanism\": \"How it maintains interest\" },\n      \"clear_cta\": { \"score\": 9, \"present\": true, \"mechanism\": \"The call to action\" },\n      \"total_checkpoints_passed\": 6,\n      \"average_checkpoint_score\": 7.5\n    },\n    \"hook_psychology\": {\n      \"archetype\": \"Fortune Teller|Experimentor|Teacher|Magician|Investigator|Contrarian\",\n      \"uses_three_step_structure\": true,\n      \"lean_in\": \"Pattern interrupt element\",\n      \"interjection\": \"Pivot word/phrase\",\n      \"snapback\": \"Contrarian redirect\"\n    },\n    \"one_standard_deviation\": \"too_direct|perfect|unclear\",\n    \"one_std_explanation\": \"Is it one step from core desire?\"\n  },\n  \"swipe_file_notes\": \"Comprehensive notes for recreating success.\",\n  \"replication_blueprint\": {\n    \"visual_must_keep\": [\"structural elements to preserve\"],\n    \"visual_can_modify\": [\"elements that can change\"],\n    \"copy_must_keep\": [\"copy patterns to preserve\"],\n    \"psychology_to_replicate\": \"Core mechanism to preserve\"\n  }\n}\n\nOutput ONLY the JSON.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.7\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    marketing_request_body: requestBody\n  }\n}];"
+      },
+      "id": "1da85d97-4c50-4dcc-ba81-eaf1ec6ab7f2",
       "name": "Build Marketing Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -592,
-        320
+        304,
+        -80
       ]
     },
     {
@@ -151,13 +145,13 @@
           "timeout": 120000
         }
       },
-      "id": "0a5756b2-3427-43d2-9ce2-c5b0340774c7",
+      "id": "6022330c-7f82-41d4-98fd-824c745e95bc",
       "name": "Extract Marketing Patterns",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -368,
-        320
+        528,
+        -80
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -170,13 +164,13 @@
       "parameters": {
         "jsCode": "const prevData = $('Build Marketing Request').first().json;\nconst response = items[0].json;\n\nlet analysisData = {};\nlet tacticalAnalysis = {};\nlet psychologyAnalysis = {};\n\ntry {\n  let content = response.choices?.[0]?.message?.content || '';\n  content = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  analysisData = JSON.parse(content);\n  tacticalAnalysis = analysisData.tactical_analysis || {};\n  psychologyAnalysis = analysisData.psychology_analysis || {};\n} catch (e) {\n  console.log('Error parsing marketing analysis:', e.message);\n  analysisData = { error: 'Failed to parse', raw_content: response.choices?.[0]?.message?.content?.substring(0, 500) };\n}\n\nconst checkpoints = psychologyAnalysis.six_checkpoints || {};\nconst { marketing_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    marketing_insights: JSON.stringify(analysisData),\n    hook_type: tacticalAnalysis.hook_type || '',\n    angle: tacticalAnalysis.angle || '',\n    funnel_stage: tacticalAnalysis.funnel_stage || '',\n    psychology_primary_horseman: psychologyAnalysis.four_horsemen?.primary || '',\n    psychology_secondary_horseman: psychologyAnalysis.four_horsemen?.secondary || '',\n    psychology_checkpoints_passed: checkpoints.total_checkpoints_passed || 0,\n    psychology_avg_checkpoint_score: checkpoints.average_checkpoint_score || 0,\n    psychology_hook_archetype: psychologyAnalysis.hook_psychology?.archetype || '',\n    psychology_one_std_deviation: psychologyAnalysis.one_standard_deviation || '',\n    replication_blueprint: analysisData.replication_blueprint || {},\n    swipe_file_notes: analysisData.swipe_file_notes || '',\n    psychology_analysis: psychologyAnalysis,\n    status: 'ANALYZED'\n  }\n}];"
       },
-      "id": "2317263f-68fa-47b3-9240-ca0257494330",
+      "id": "c23993ee-141a-47d8-bd6b-2ddee6d0a960",
       "name": "Parse Marketing Analysis",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        320
+        736,
+        -80
       ]
     },
     {
@@ -194,25 +188,22 @@
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "Competitor_Ads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qZY6RP6xCmqifmEG4xXYbYMrPSXMQL0YcTGdi9UIJk/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
             "ad_archive_id": "={{ $json.ad_archive_id }}",
-            "row_number": 0,
             "status": "={{ $json.status }}",
             "vision_json": "={{ JSON.stringify($json.vision_json) }}",
             "marketing_insights": "={{ $json.marketing_insights }}",
-            "hook_type": "={{ $json.hook_type }}",
-            "angle": "={{ $json.angle }}",
-            "funnel_stage": "={{ $json.funnel_stage }}",
             "psychology_primary_horseman": "={{ $json.psychology_primary_horseman }}",
             "psychology_secondary_horseman": "={{ $json.psychology_secondary_horseman }}",
             "psychology_checkpoints_passed": "={{ $json.psychology_checkpoints_passed }}",
             "psychology_avg_checkpoint_score": "={{ $json.psychology_avg_checkpoint_score }}",
-            "psychology_hook_archetype": "={{ $json.psychology_hook_archetype }}",
             "psychology_one_std_deviation": "={{ $json.psychology_one_std_deviation }}",
+            "angle": "={{ $json.angle }}",
+            "funnel_stage": "={{ $json.funnel_stage }}",
             "swipe_file_notes": "={{ $json.swipe_file_notes }}"
           },
           "matchingColumns": [
@@ -226,637 +217,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "page_id",
-              "displayName": "page_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
               "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "page_name",
-              "displayName": "page_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "start_date",
-              "displayName": "start_date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "end_date",
-              "displayName": "end_date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "run_duration_days",
-              "displayName": "run_duration_days",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "is_active",
-              "displayName": "is_active",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "collation_count",
-              "displayName": "collation_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "effectiveness_score",
-              "displayName": "effectiveness_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "body_text",
-              "displayName": "body_text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cta_type",
-              "displayName": "cta_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "media_type",
-              "displayName": "media_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "image_url",
-              "displayName": "image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "video_url",
-              "displayName": "video_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "video_thumbnail_url",
-              "displayName": "video_thumbnail_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "creative_hash",
-              "displayName": "creative_hash",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "last_checked",
-              "displayName": "last_checked",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "vision_json",
-              "displayName": "vision_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "marketing_insights",
-              "displayName": "marketing_insights",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_headlines",
-              "displayName": "generated_headlines",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_body_copy",
-              "displayName": "generated_body_copy",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_prompt",
-              "displayName": "generated_image_prompt",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_url",
-              "displayName": "generated_image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "publisher_platforms",
-              "displayName": "publisher_platforms",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "diff_status",
-              "displayName": "diff_status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "previous_hash",
-              "displayName": "previous_hash",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_primary_horseman",
-              "displayName": "psychology_primary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_secondary_horseman",
-              "displayName": "psychology_secondary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_value_score",
-              "displayName": "psychology_value_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_checkpoints_passed",
-              "displayName": "psychology_checkpoints_passed",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_avg_checkpoint_score",
-              "displayName": "psychology_avg_checkpoint_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_hook_archetype",
-              "displayName": "psychology_hook_archetype",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_one_std_deviation",
-              "displayName": "psychology_one_std_deviation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_full",
-              "displayName": "generated_hook_full",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_archetype",
-              "displayName": "generated_hook_archetype",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "hook_type",
-              "displayName": "hook_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_primary_horseman",
-              "displayName": "generated_primary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_contrast_mechanism",
-              "displayName": "generated_contrast_mechanism",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_passes_checkpoints",
-              "displayName": "quality_passes_checkpoints",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_scroll_stop_power",
-              "displayName": "quality_scroll_stop_power",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_conversion_potential",
-              "displayName": "quality_conversion_potential",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "angle",
-              "displayName": "angle",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "funnel_stage",
-              "displayName": "funnel_stage",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "swipe_file_notes",
-              "displayName": "swipe_file_notes",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_cta",
-              "displayName": "generated_cta",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_data_point",
-              "displayName": "generated_data_point",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_full",
-              "displayName": "generated_hook_full",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_pain",
-              "displayName": "checkpoint_pain",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_trust",
-              "displayName": "checkpoint_trust",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "ad_concept_name",
-              "displayName": "ad_concept_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "layer_count",
-              "displayName": "layer_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "image_prompt_json",
-              "displayName": "image_prompt_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_url",
-              "displayName": "generated_image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "collation_id",
-              "displayName": "collation_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cta_text",
-              "displayName": "cta_text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "link_url",
-              "displayName": "link_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "link_description",
-              "displayName": "link_description",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "title",
-              "displayName": "title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cards_count",
-              "displayName": "cards_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "visual_concept",
-              "displayName": "visual_concept",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "one_sentence_summary",
-              "displayName": "one_sentence_summary",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "concept_ranking_score",
-              "displayName": "concept_ranking_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "row_number",
-              "displayName": "row_number",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "readOnly": true,
               "removed": false
             }
           ],
@@ -867,32 +228,52 @@
           "cellFormat": "USER_ENTERED"
         }
       },
-      "id": "cf59aee0-c825-412f-84df-afe987d90d6f",
+      "id": "b544b6ac-e332-4160-a392-68ffd06ab5f5",
       "name": "Update Google Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        80,
-        320
+        960,
+        -80
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     },
     {
       "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jtGqHXa2IvPlU3Ja",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/jtGqHXa2IvPlU3Ja",
+          "cachedResultName": "Ad Intelligence - 3. Creative Generator (Public V3)"
+        },
+        "options": {}
+      },
+      "id": "4af29278-c7a2-449d-8d49-4a0fa3f273f7",
+      "name": "Trigger Creative Generator",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        -80
+      ]
+    },
+    {
+      "parameters": {
         "jsCode": "return [{ json: { ...items[0].json, status: 'SKIPPED_NO_IMAGE' } }];"
       },
-      "id": "4a718b50-a9aa-41b3-bf23-12339f4005ac",
+      "id": "90e3273b-6e63-47a5-8ed8-fb8b547512d5",
       "name": "Skip - No Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1696,
-        528
+        -800,
+        128
       ]
     },
     {
@@ -910,7 +291,7 @@
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "Competitor_Ads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qZY6RP6xCmqifmEG4xXYbYMrPSXMQL0YcTGdi9UIJk/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -931,636 +312,6 @@
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
-            },
-            {
-              "id": "page_id",
-              "displayName": "page_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "page_name",
-              "displayName": "page_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "start_date",
-              "displayName": "start_date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "end_date",
-              "displayName": "end_date",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "run_duration_days",
-              "displayName": "run_duration_days",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "is_active",
-              "displayName": "is_active",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "collation_count",
-              "displayName": "collation_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "effectiveness_score",
-              "displayName": "effectiveness_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "body_text",
-              "displayName": "body_text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cta_type",
-              "displayName": "cta_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "media_type",
-              "displayName": "media_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "image_url",
-              "displayName": "image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "video_url",
-              "displayName": "video_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "video_thumbnail_url",
-              "displayName": "video_thumbnail_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "creative_hash",
-              "displayName": "creative_hash",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "last_checked",
-              "displayName": "last_checked",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "vision_json",
-              "displayName": "vision_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "marketing_insights",
-              "displayName": "marketing_insights",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_headlines",
-              "displayName": "generated_headlines",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_body_copy",
-              "displayName": "generated_body_copy",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_prompt",
-              "displayName": "generated_image_prompt",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_url",
-              "displayName": "generated_image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "publisher_platforms",
-              "displayName": "publisher_platforms",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "diff_status",
-              "displayName": "diff_status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "previous_hash",
-              "displayName": "previous_hash",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_primary_horseman",
-              "displayName": "psychology_primary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_secondary_horseman",
-              "displayName": "psychology_secondary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_value_score",
-              "displayName": "psychology_value_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_checkpoints_passed",
-              "displayName": "psychology_checkpoints_passed",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_avg_checkpoint_score",
-              "displayName": "psychology_avg_checkpoint_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_hook_archetype",
-              "displayName": "psychology_hook_archetype",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "psychology_one_std_deviation",
-              "displayName": "psychology_one_std_deviation",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_full",
-              "displayName": "generated_hook_full",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_archetype",
-              "displayName": "generated_hook_archetype",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "hook_type",
-              "displayName": "hook_type",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_primary_horseman",
-              "displayName": "generated_primary_horseman",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_contrast_mechanism",
-              "displayName": "generated_contrast_mechanism",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_passes_checkpoints",
-              "displayName": "quality_passes_checkpoints",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_scroll_stop_power",
-              "displayName": "quality_scroll_stop_power",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "quality_conversion_potential",
-              "displayName": "quality_conversion_potential",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "angle",
-              "displayName": "angle",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "funnel_stage",
-              "displayName": "funnel_stage",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "swipe_file_notes",
-              "displayName": "swipe_file_notes",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_cta",
-              "displayName": "generated_cta",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_data_point",
-              "displayName": "generated_data_point",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_hook_full",
-              "displayName": "generated_hook_full",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_pain",
-              "displayName": "checkpoint_pain",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "checkpoint_trust",
-              "displayName": "checkpoint_trust",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "ad_concept_name",
-              "displayName": "ad_concept_name",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "layer_count",
-              "displayName": "layer_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "image_prompt_json",
-              "displayName": "image_prompt_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "generated_image_url",
-              "displayName": "generated_image_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "collation_id",
-              "displayName": "collation_id",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cta_text",
-              "displayName": "cta_text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "link_url",
-              "displayName": "link_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "link_description",
-              "displayName": "link_description",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "title",
-              "displayName": "title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "cards_count",
-              "displayName": "cards_count",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "visual_concept",
-              "displayName": "visual_concept",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "one_sentence_summary",
-              "displayName": "one_sentence_summary",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "concept_ranking_score",
-              "displayName": "concept_ranking_score",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "row_number",
-              "displayName": "row_number",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "canBeUsedToMatch": true,
-              "readOnly": true,
-              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
@@ -1568,45 +319,20 @@
         },
         "options": {}
       },
-      "id": "dca28da2-450b-4041-97e4-b8675e63bc27",
+      "id": "8c94479d-c302-4cb0-8419-c91669bc7428",
       "name": "Update Sheet - Skipped",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        -1472,
-        528
+        -592,
+        128
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
-    },
-    {
-      "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "QREIYQrNVa3r2lAS",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/QREIYQrNVa3r2lAS",
-          "cachedResultName": "Ad Intelligence - 3. Creative Generator V7 (Psychology Ideation)"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {}
-        },
-        "mode": "each",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.3,
-      "position": [
-        320,
-        320
-      ],
-      "id": "6c9d3986-0e33-42b3-8312-bf060ff0b7a5",
-      "name": "Call 'Ad Intelligence - 3. Creative Generator V7 (Psychology Ideation)'"
     }
   ],
   "pinData": {},
@@ -1732,7 +458,7 @@
       "main": [
         [
           {
-            "node": "Call 'Ad Intelligence - 3. Creative Generator V7 (Psychology Ideation)'",
+            "node": "Trigger Creative Generator",
             "type": "main",
             "index": 0
           }
@@ -1753,13 +479,15 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "aae14358-fcb1-4357-8cf4-2a0c6f1a2ada",
+  "versionId": "8b823ed9-cac6-4e05-bc38-e7b28092284f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
   },
-  "id": "u5dYMu5FutEKjzpV",
+  "id": "A7GfYePkVu5ig9BU",
   "tags": []
 }

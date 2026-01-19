@@ -1,5 +1,5 @@
 {
-  "name": "Ad Intelligence - 1. Collector & Differ (Public V2)",
+  "name": "Ad Intelligence - 1. Collector & Differ (Public V3)",
   "nodes": [
     {
       "parameters": {
@@ -15,7 +15,7 @@
           ]
         }
       },
-      "id": "0a84d8c2-e581-40be-bfe9-96716eebc35e",
+      "id": "79a0505c-d260-414e-b2f9-1e883a78407a",
       "name": "Weekly Schedule",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -26,7 +26,7 @@
     },
     {
       "parameters": {},
-      "id": "507bbcef-b564-4336-83ae-6e5fed390ed9",
+      "id": "af6388d0-7882-4bbe-b878-17550d8b70d7",
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -42,13 +42,13 @@
             {
               "id": "1",
               "name": "competitor_page_id",
-              "value": "1440219672904565",
+              "value": "722103781144228",
               "type": "string"
             },
             {
               "id": "2",
               "name": "competitor_name",
-              "value": "The Hustle",
+              "value": " ABC Glofox",
               "type": "string"
             },
             {
@@ -66,14 +66,14 @@
             {
               "id": "5",
               "name": "scrapecreators_api_key",
-              "value": "insert_your_api_key",
+              "value": "={enter_your_key}",
               "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "3c636dba-4061-4b1e-abf6-682ac2e288b8",
+      "id": "690fd376-c23b-4d29-8681-5414410c0f2b",
       "name": "Config Settings",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -123,7 +123,7 @@
           }
         }
       },
-      "id": "1585bb60-371c-4f48-b9a9-86fedc591c4b",
+      "id": "9ca3c3b5-d0cf-4f8d-a238-7c741f5fd5a2",
       "name": "Fetch Competitor Ads",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -136,7 +136,7 @@
       "parameters": {
         "jsCode": "// =============================================================================\n// Calculate Effectiveness & Rank - V4 \n// Images are at ROOT level: results[0].original_image_url\n// =============================================================================\n\nconst response = items[0].json;\nconst ads = response.results || [];\n\nconsole.log(`Found ${ads.length} ads in response.results`);\n\nif (ads.length === 0) {\n  return [{ \n    json: { \n      error: 'No ads found in response.results', \n      response_keys: Object.keys(response)\n    } \n  }];\n}\n\n// Simple hash function\nfunction simpleHash(str) {\n  let hash = 0;\n  const s = String(str || '');\n  for (let i = 0; i < s.length; i++) {\n    const char = s.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(16);\n}\n\nconst now = Date.now();\n\nconst processedAds = ads.map((ad, index) => {\n  try {\n    const snapshot = ad.snapshot || {};\n    const cards = snapshot.cards || [];\n    \n    // Handle start_date (Unix timestamp in seconds)\n    let startDate = now - (30 * 24 * 60 * 60 * 1000);\n    if (ad.start_date) {\n      startDate = ad.start_date < 10000000000 ? ad.start_date * 1000 : ad.start_date;\n    }\n    \n    const runDurationDays = Math.max(1, Math.floor((now - startDate) / (1000 * 60 * 60 * 24)));\n    const collationCount = ad.collation_count || 1;\n    const effectivenessScore = (runDurationDays * 0.7) + (collationCount * 10 * 0.3);\n    \n    // === IMAGE EXTRACTION ===\n    // Priority 1: ROOT LEVEL of ad object (this is where your images are!)\n    let imageUrl = ad.original_image_url || ad.resized_image_url || '';\n    \n    // Priority 2: Inside snapshot directly\n    if (!imageUrl) {\n      imageUrl = snapshot.original_image_url || snapshot.resized_image_url || '';\n    }\n    \n    // Priority 3: Inside cards[]\n    if (!imageUrl && cards.length > 0) {\n      const firstCard = cards[0];\n      imageUrl = firstCard.original_image_url || firstCard.resized_image_url || '';\n    }\n    \n    // Priority 4: snapshot.images[]\n    if (!imageUrl && snapshot.images && snapshot.images.length > 0) {\n      const firstImage = snapshot.images[0];\n      imageUrl = typeof firstImage === 'string' ? firstImage : (firstImage.original_image_url || '');\n    }\n    \n    // === VIDEO ===\n    let videoUrl = ad.video_sd_url || ad.video_hd_url || '';\n    let videoThumbnailUrl = ad.video_preview_image_url || '';\n    \n    if (!videoUrl && snapshot.videos && snapshot.videos.length > 0) {\n      const firstVideo = snapshot.videos[0];\n      videoUrl = firstVideo.video_sd_url || firstVideo.video_hd_url || '';\n      videoThumbnailUrl = firstVideo.video_preview_image_url || '';\n    }\n    \n    // Use video thumbnail if no image\n    if (!imageUrl && videoThumbnailUrl) {\n      imageUrl = videoThumbnailUrl;\n    }\n    \n    // === BODY TEXT ===\n    let bodyText = '';\n    // Check cards first\n    if (cards.length > 0 && cards[0].body) {\n      bodyText = cards[0].body;\n    }\n    // Then snapshot.body\n    if (!bodyText && snapshot.body) {\n      bodyText = typeof snapshot.body === 'string' ? snapshot.body : (snapshot.body.text || '');\n    }\n    // Then root level\n    if (!bodyText) {\n      bodyText = ad.body || '';\n    }\n    \n    // === CTA ===\n    let ctaType = '';\n    let ctaText = '';\n    \n    if (cards.length > 0) {\n      ctaType = cards[0].cta_type || '';\n      ctaText = cards[0].cta_text || '';\n    }\n    if (!ctaType) ctaType = snapshot.cta_type || ad.cta_type || '';\n    if (!ctaText) ctaText = snapshot.cta_text || ad.cta_text || '';\n    \n    // === OTHER FIELDS ===\n    let linkUrl = '';\n    let linkDescription = '';\n    let title = '';\n    \n    if (cards.length > 0) {\n      linkUrl = cards[0].link_url || '';\n      linkDescription = cards[0].link_description || '';\n      title = cards[0].title || '';\n    }\n    \n    // Create hash\n    const hashInput = bodyText + imageUrl + videoUrl;\n    const creativeHash = simpleHash(hashInput);\n    \n    // Page info\n    const pageId = ad.page_id || snapshot.page_id || '';\n    const pageName = snapshot.page_name || ad.page_name || '';\n    \n    // End date\n    let endDateStr = '';\n    if (ad.end_date) {\n      const endTs = ad.end_date < 10000000000 ? ad.end_date * 1000 : ad.end_date;\n      endDateStr = new Date(endTs).toISOString().split('T')[0];\n    }\n    \n    const publisherPlatforms = ad.publisher_platform || [];\n    const mediaType = snapshot.display_format || ad.display_format || 'UNKNOWN';\n    \n    return {\n      ad_archive_id: ad.ad_archive_id || `ad_${index}`,\n      collation_id: ad.collation_id || '',\n      page_id: pageId,\n      page_name: pageName,\n      start_date: new Date(startDate).toISOString().split('T')[0],\n      end_date: endDateStr,\n      run_duration_days: runDurationDays,\n      is_active: true,\n      collation_count: collationCount,\n      effectiveness_score: Math.round(effectivenessScore * 100) / 100,\n      body_text: bodyText,\n      cta_type: ctaType,\n      cta_text: ctaText,\n      link_url: linkUrl,\n      link_description: linkDescription,\n      title: title,\n      media_type: mediaType,\n      image_url: imageUrl,\n      video_url: videoUrl,\n      video_thumbnail_url: videoThumbnailUrl,\n      cards_count: cards.length,\n      creative_hash: creativeHash,\n      last_checked: new Date().toISOString(),\n      status: 'NEW',\n      publisher_platforms: Array.isArray(publisherPlatforms) ? publisherPlatforms.join(', ') : ''\n    };\n  } catch (err) {\n    console.log(`Error processing ad ${index}:`, err.message);\n    return null;\n  }\n}).filter(ad => ad !== null);\n\nconsole.log(`Processed ${processedAds.length} ads`);\nconsole.log(`Ads with images: ${processedAds.filter(a => a.image_url).length}`);\n\n// Debug: Show first ad's image_url\nif (processedAds.length > 0) {\n  console.log(`First ad image_url: ${processedAds[0].image_url?.substring(0, 50)}...`);\n}\n\n// Sort and filter\nconst topAds = processedAds\n  .filter(ad => ad.image_url)\n  .sort((a, b) => b.effectiveness_score - a.effectiveness_score)\n  .slice(0, 25);\n\nconsole.log(`Returning ${topAds.length} top ads`);\n\nif (topAds.length === 0) {\n  // Debug output\n  const sampleAd = ads[0] || {};\n  return [{\n    json: {\n      error: 'No ads with images found',\n      debug: {\n        total_ads: ads.length,\n        processed: processedAds.length,\n        with_images: processedAds.filter(a => a.image_url).length,\n        sample_ad_keys: Object.keys(sampleAd),\n        sample_has_original_image_url: !!sampleAd.original_image_url,\n        sample_original_image_url: sampleAd.original_image_url?.substring(0, 100)\n      }\n    }\n  }];\n}\n\nreturn topAds.map(ad => ({ json: ad }));"
       },
-      "id": "5a6a35f6-7c0b-4b39-8a8f-8dc8b6b5da38",
+      "id": "8427cc58-2511-4812-87a1-137916232530",
       "name": "Calculate Effectiveness & Rank",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -149,19 +149,21 @@
       "parameters": {
         "documentId": {
           "__rl": true,
-          "value": "16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI",
+          "value": "1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI",
           "mode": "list",
-          "cachedResultName": "Loman Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit?usp=drivesdk"
+          "cachedResultName": "Big Players Ad Intelligence (Public)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Competitor_Ads",
-          "mode": "name"
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Competitor_Ads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit#gid=0"
         },
         "options": {}
       },
-      "id": "15d63aac-b633-414b-b572-ee89e0bb1b8d",
+      "id": "dda8b175-da95-4f6b-81d7-a20c100fe0ef",
       "name": "Read Existing Ads",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
@@ -173,7 +175,7 @@
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     },
@@ -181,7 +183,7 @@
       "parameters": {
         "jsCode": "// Get new ads from ScrapeCreators and existing ads from Google Sheets\nconst newAds = $('Calculate Effectiveness & Rank').all().map(i => i.json);\nconst existingAdsRaw = $('Read Existing Ads').all().map(i => i.json);\n\n// Build a map of existing ads by ad_archive_id\nconst existingAdsMap = new Map();\nexistingAdsRaw.forEach(ad => {\n  if (ad.ad_archive_id) {\n    existingAdsMap.set(ad.ad_archive_id.toString(), ad);\n  }\n});\n\n// Categorize ads\nconst results = [];\nlet newCount = 0;\nlet changedCount = 0;\nlet unchangedCount = 0;\n\nfor (const newAd of newAds) {\n  const adId = newAd.ad_archive_id?.toString();\n  if (!adId) continue;\n  \n  const existingAd = existingAdsMap.get(adId);\n  \n  if (!existingAd) {\n    // This is a NEW ad\n    newCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'NEW',\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else if (existingAd.creative_hash !== newAd.creative_hash) {\n    // This ad has CHANGED\n    changedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'CHANGED',\n        previous_hash: existingAd.creative_hash,\n        status: 'PENDING_ANALYSIS'\n      }\n    });\n  } else {\n    // Ad is UNCHANGED - still track it but don't reprocess\n    unchangedCount++;\n    results.push({\n      json: {\n        ...newAd,\n        diff_status: 'UNCHANGED',\n        status: existingAd.status || 'ANALYZED'\n      }\n    });\n  }\n}\n\n// Add summary as first item\nconst summary = {\n  json: {\n    summary: true,\n    total_ads_checked: newAds.length,\n    new_ads: newCount,\n    changed_ads: changedCount,\n    unchanged_ads: unchangedCount,\n    ads_to_process: newCount + changedCount,\n    timestamp: new Date().toISOString()\n  }\n};\n\nreturn [summary, ...results];"
       },
-      "id": "3ac90f70-8272-46d7-878f-edd9bad8be14",
+      "id": "917bbb31-cc36-4655-92eb-1d486c4d2139",
       "name": "Identify New or Changed Ads",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -223,7 +225,7 @@
         },
         "options": {}
       },
-      "id": "1383505c-8f1d-47e5-aa65-96b170a57f21",
+      "id": "30cd05bb-8e98-4677-bf93-7828c8147bfa",
       "name": "Filter: Ads to Process",
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
@@ -237,20 +239,20 @@
         "operation": "appendOrUpdate",
         "documentId": {
           "__rl": true,
-          "value": "16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI",
+          "value": "1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI",
           "mode": "list",
-          "cachedResultName": "Loman Ad Intelligence",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit?usp=drivesdk"
+          "cachedResultName": "Big Players Ad Intelligence (Public)",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "Competitor_Ads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SOr0Bxkn2Luf85EADvFdFfJbkc0kPUYbRGduKjGNieI/edit#gid=0"
         },
         "columns": {
-          "mappingMode": "autoMapInputData",
+          "mappingMode": "defineBelow",
           "value": {},
           "matchingColumns": [
             "ad_archive_id"
@@ -588,8 +590,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "generated_primary_horseman",
@@ -643,8 +644,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "funnel_stage",
@@ -653,8 +653,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "swipe_file_notes",
@@ -663,8 +662,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "generated_cta",
@@ -673,8 +671,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "generated_data_point",
@@ -683,8 +680,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "generated_hook_full",
@@ -702,8 +698,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "checkpoint_trust",
@@ -712,8 +707,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "ad_concept_name",
@@ -722,8 +716,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "layer_count",
@@ -732,8 +725,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "image_prompt_json",
@@ -742,8 +734,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "generated_image_url",
@@ -761,8 +752,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "cta_text",
@@ -771,8 +761,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "link_url",
@@ -781,8 +770,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "link_description",
@@ -791,8 +779,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "title",
@@ -801,8 +788,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "cards_count",
@@ -811,8 +797,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "visual_concept",
@@ -821,8 +806,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "one_sentence_summary",
@@ -831,8 +815,7 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
             },
             {
               "id": "concept_ranking_score",
@@ -841,8 +824,61 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detected_aspect_ratio",
+              "displayName": "detected_aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detected_background_type",
+              "displayName": "detected_background_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detected_has_photo",
+              "displayName": "detected_has_photo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "key_value_proposition",
+              "displayName": "key_value_proposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ],
           "attemptToConvertTypes": false,
@@ -850,7 +886,7 @@
         },
         "options": {}
       },
-      "id": "72a17aea-6e71-4ebf-b702-f7a00a591880",
+      "id": "66e01082-28f7-419e-885e-caa6ca4bfe64",
       "name": "Update Tracking Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
@@ -861,7 +897,7 @@
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     },
@@ -869,10 +905,10 @@
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "Alsj9UaTkWoXGO1U",
+          "value": "A7GfYePkVu5ig9BU",
           "mode": "list",
-          "cachedResultUrl": "/workflow/Alsj9UaTkWoXGO1U",
-          "cachedResultName": "Ad Intelligence - 2. Visual Analyzer (V5 VisionStruct)"
+          "cachedResultUrl": "/workflow/A7GfYePkVu5ig9BU",
+          "cachedResultName": "Ad Intelligence - 2. Visual Analyzer (Public V3)"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
@@ -887,8 +923,8 @@
         1984,
         112
       ],
-      "id": "158b33e2-c61d-49c5-989b-f313c28d8988",
-      "name": "Call 'Ad Intelligence - 2. Visual Analyzer'"
+      "id": "d10601a8-84e7-4102-8825-fe2435a1cd1f",
+      "name": "Call 'Ad Intelligence - 2. Visual Analyzer (Public V3)'"
     }
   ],
   "pinData": {},
@@ -985,14 +1021,14 @@
       "main": [
         [
           {
-            "node": "Call 'Ad Intelligence - 2. Visual Analyzer'",
+            "node": "Call 'Ad Intelligence - 2. Visual Analyzer (Public V3)'",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Call 'Ad Intelligence - 2. Visual Analyzer'": {
+    "Call 'Ad Intelligence - 2. Visual Analyzer (Public V3)'": {
       "main": [
         []
       ]
@@ -1002,11 +1038,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "53fdd0b0-a7d0-4b38-a69e-83ce778f14b4",
+  "versionId": "0b4faa49-3609-46be-ad85-491d697d82e9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
   },
-  "id": "6NWxrfgVnSbNRaog",
+  "id": "0bbeFMiMuIT5wGnN",
   "tags": []
 }

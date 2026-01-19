@@ -1,15 +1,15 @@
 {
-  "name": "Ad Intelligence - 3. Creative Generator (Public V2)",
+  "name": "Ad Intelligence - 3. Creative Generator (Public V3)",
   "nodes": [
     {
       "parameters": {},
-      "id": "98cf0f1c-1973-4b16-8d2c-0dce29905a06",
+      "id": "0025af18-ee91-4cc5-b58b-994d41e35f2c",
       "name": "When Executed by Another Workflow",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -4128,
-        224
+        -8304,
+        416
       ]
     },
     {
@@ -30,18 +30,18 @@
         },
         "options": {}
       },
-      "id": "d068cda0-86b7-49e6-a04b-1913b1db0bcf",
+      "id": "9fd96fe8-8217-4198-862c-12766360ec3b",
       "name": "Read Brand Guidelines",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        -3920,
-        224
+        -8080,
+        416
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     },
@@ -49,26 +49,26 @@
       "parameters": {
         "jsCode": "// Extract Brand Info from sheet and merge with incoming ad data\nconst brandRows = $('Read Brand Guidelines').all();\nconst adData = $('When Executed by Another Workflow').first().json;\n\n// Build brand_info object from key-value pairs\nconst brandInfo = {};\n\n// DEBUG: Log what we're getting from the sheet\nconsole.log('Brand rows count:', brandRows.length);\nif (brandRows.length > 0) {\n  console.log('First row keys:', Object.keys(brandRows[0].json));\n  console.log('First row data:', JSON.stringify(brandRows[0].json));\n}\n\nbrandRows.forEach(row => {\n  const data = row.json;\n  \n  // Try multiple possible column name formats\n  // Google Sheets returns data with header names as keys\n  const key = data.Field || data.field || data.Key || data.key || data.A || data['Field'] || data['A'];\n  const value = data.Value || data.value || data.Content || data.content || data.B || data['Value'] || data['B'];\n  \n  if (key && value) {\n    // Normalize key: lowercase, replace spaces/hyphens with underscores\n    const normalizedKey = String(key).toLowerCase().replace(/\\s+/g, '_').replace(/-/g, '_');\n    brandInfo[normalizedKey] = value;\n    console.log(`Mapped: ${key} -> ${normalizedKey} = ${String(value).substring(0, 50)}...`);\n  }\n});\n\n// If we got no data from key-value format, try single row with all columns\nif (Object.keys(brandInfo).length === 0 && brandRows.length > 0) {\n  console.log('No key-value pairs found, trying column format...');\n  const data = brandRows[0].json;\n  Object.keys(data).forEach(key => {\n    if (data[key] && typeof data[key] === 'string') {\n      const normalizedKey = key.toLowerCase().replace(/\\s+/g, '_').replace(/-/g, '_');\n      brandInfo[normalizedKey] = data[key];\n    }\n  });\n}\n\n// Field mappings for normalization (map various names to standard names)\nconst fieldMappings = {\n  'brand': 'brand_name', 'name': 'brand_name', 'company': 'brand_name', 'brand_name': 'brand_name',\n  'description': 'description', 'about': 'description', 'tagline': 'tagline',\n  'target': 'target_audience', 'audience': 'target_audience', 'icp': 'target_audience', 'target_audience': 'target_audience',\n  'pain_points': 'pain_points', 'pains': 'pain_points', 'problems': 'pain_points',\n  'usps': 'key_USPs', 'key_usps': 'key_USPs', 'benefits': 'key_USPs', 'key_usps': 'key_USPs',\n  'voice': 'voice', 'tone': 'voice', 'voice_keywords': 'voice_keywords',\n  'example_headlines': 'example_headlines', 'headlines': 'example_headlines',\n  'forbidden_words': 'forbidden_words', 'forbidden_phrases': 'forbidden_words',\n  'primary_color': 'background_color', 'background_color': 'background_color',\n  'secondary_color': 'secondary_color', 'text_color': 'secondary_color',\n  'accent_color': 'accent_color', 'cta_color': 'accent_color',\n  'primary_font': 'primary_font', 'font': 'primary_font',\n  'font_fallback': 'font_fallback',\n  'typography_tracking': 'typography_tracking', 'tracking': 'typography_tracking',\n  'typography_line_height': 'typography_line_height', 'line_height': 'typography_line_height',\n  'audience_persona': 'audience_persona',\n  'content_pillars': 'content_pillars',\n  'product_name': 'product_name',\n  'website_url': 'website_url',\n  'logo_url': 'logo_url'\n};\n\n// Create normalized brand info with standard field names\nconst normalizedBrandInfo = {};\nObject.keys(brandInfo).forEach(key => {\n  const standardKey = fieldMappings[key] || key;\n  normalizedBrandInfo[standardKey] = brandInfo[key];\n});\n\nconsole.log('Final brand_info keys:', Object.keys(normalizedBrandInfo));\nconsole.log('brand_name:', normalizedBrandInfo.brand_name);\nconsole.log('pain_points:', normalizedBrandInfo.pain_points?.substring(0, 100));\n\n// Parse vision_json if it's a string\nlet visionJson = adData.vision_json;\nif (typeof visionJson === 'string' && visionJson) {\n  try { visionJson = JSON.parse(visionJson); } catch (e) { console.log('Vision JSON parse error:', e); }\n}\n\n// Parse marketing_insights if it's a string\nlet marketingInsights = adData.marketing_insights;\nif (typeof marketingInsights === 'string' && marketingInsights) {\n  try { marketingInsights = JSON.parse(marketingInsights); } catch (e) { console.log('Marketing insights parse error:', e); }\n}\n\nreturn [{\n  json: {\n    ...adData,\n    brand_info: normalizedBrandInfo,\n    vision_json: visionJson,\n    marketing_insights: marketingInsights\n  }\n}];"
       },
-      "id": "496b75f8-b50f-4af7-a084-c87c95d79930",
+      "id": "d28ecb26-996d-4021-914e-814aef6cfa63",
       "name": "Extract Brand Info",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -3696,
-        224
+        -7872,
+        416
       ]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// STEP 1: GENERATE 3 CREATIVE CONCEPTS\n// Uses Kallaway Psychology Framework for original ideation\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst visionJson = prevData.vision_json || {};\nconst psychologyAnalysis = prevData.marketing_insights || {};\nconst competitorCopy = prevData.body_text || '';\nconst brandInfo = prevData.brand_info || {};\n\n// DEBUG: Log brand info to verify it's populated\nconsole.log('Brand info keys:', Object.keys(brandInfo));\nconsole.log('Brand name:', brandInfo.brand_name);\nconsole.log('Pain points:', brandInfo.pain_points?.substring(0, 100));\n\nconst prompt = `You are an elite advertising creative director who specializes in direct-response ads for B2B SaaS. You use the Kallaway Psychology Framework to create ads that hack human behavior.\n\n## YOUR TASK\n\nCreate 3 ORIGINAL ad concepts for the brand below. Do NOT just swap words from the competitor ad. Instead:\n1. Understand WHY the competitor's ad psychology works\n2. Apply those psychological principles to the brand's unique positioning\n3. Generate fresh, specific, concrete concepts that would make the target audience stop scrolling\n\n## COMPETITOR AD ANALYSIS\n\n**What the competitor ad said:**\n${competitorCopy}\n\n**Visual structure that worked:**\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n**Psychology that made it effective:**\n${JSON.stringify(psychologyAnalysis, null, 2)}\n\n## BRAND CONTEXT (THIS IS WHO YOU'RE CREATING ADS FOR)\n\n**Brand:** ${brandInfo.brand_name || 'Unknown'}\n**Tagline:** ${brandInfo.tagline || ''}\n**What they do:** ${brandInfo.description || brandInfo.tagline || 'AI-powered solution'}\n**Product name:** ${brandInfo.product_name || brandInfo.brand_name || ''}\n\n**Target audience:** ${brandInfo.target_audience || 'Business owners'}\n\n**Audience persona:**\n${brandInfo.audience_persona || '- Not specified'}\n\n**Primary pain points (USE THESE - they are gold):**\n${brandInfo.pain_points || '- Not specified'}\n\n**Key USPs - specific proof points (USE THESE NUMBERS):**\n${brandInfo.key_usps || brandInfo.key_USPs || '- Not specified'}\n\n**Voice/tone:**\n${brandInfo.voice || 'professional, direct'}\n\n**Voice keywords (use these words):**\n${brandInfo.voice_keywords || ''}\n\n**Example headlines that represent the brand voice:**\n${brandInfo.example_headlines || '- Not specified'}\n\n**Forbidden words/phrases (NEVER USE):**\n${brandInfo.forbidden_words || 'None specified'}\n\n**Brand colors:**\n- Background: ${brandInfo.background_color || brandInfo.primary_color || '#0a0a0a'}\n- Text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent (CTA): ${brandInfo.accent_color || '#FADC3C'}\n\n## KALLAWAY PSYCHOLOGY FRAMEWORK\n\n**The Four Horsemen of Desires** (every ad must promise to unlock ONE primary):\n1. 💰 MONEY - Wealth, revenue, cost savings, financial freedom\n2. ⏰ TIME - Efficiency, automation, shortcuts, freedom\n3. 💪 HEALTH - Physical, mental, longevity (rare for B2B)\n4. 🏆 STATUS - Recognition, competitive advantage, being ahead\n\n**The Six Checkpoints** (every ad must pass ALL SIX):\n1. PAIN - Trigger and aggravate the specific pain point\n2. TRUST - Establish credibility (numbers, proof, specificity)\n3. CONTRARIAN - Offer a differentiated approach\n4. LIKABILITY - Be human, authentic, relatable\n5. REHOOK - Maintain interest through the entire ad\n6. CTA - Clear, compelling call to action\n\n**Hook Archetypes:**\n- FORTUNE TELLER: Predict a future outcome\n- MAGICIAN: Achieve the impossible\n- INVESTIGATOR: Uncover hidden truth\n- CONTRARIAN: Challenge accepted wisdom\n- TEACHER: Educational revelation\n- EXPERIMENTOR: Test with surprising results\n\n**Hook Formula (3 steps):**\n1. LEAN-IN: Pattern interrupt that grabs attention\n2. INTERJECTION: Pivot word (But, However, What if)\n3. SNAPBACK: Contrarian redirect\n\n## OUTPUT REQUIREMENTS\n\n{\n  \"concepts\": [\n    {\n      \"concept_name\": \"Short descriptive name\",\n      \"primary_horseman\": \"Money|Time|Status\",\n      \"hook_archetype\": \"Fortune Teller|Magician|Investigator|Contrarian|Teacher|Experimentor\",\n      \"hook\": {\n        \"full_hook\": \"Complete hook as it would appear\",\n        \"lean_in\": \"The attention-grabbing opener\",\n        \"interjection\": \"The pivot word/phrase\",\n        \"snapback\": \"The contrarian reframe\"\n      },\n      \"copy\": {\n        \"headline\": \"Main headline text\",\n        \"subheadline\": \"Supporting line\",\n        \"data_point\": \"Specific number/stat from brand USPs\",\n        \"cta_text\": \"Button text\",\n        \"cta_subtext\": \"Optional line below CTA\"\n      },\n      \"visual_concept\": {\n        \"description\": \"Detailed description of what the IMAGE should show\",\n        \"key_elements\": [\"List\", \"of\", \"visual\", \"elements\"],\n        \"mood\": \"The emotional tone\",\n        \"avoid\": \"What NOT to show\"\n      },\n      \"psychology_mapping\": {\n        \"pain_checkpoint\": \"How this triggers pain\",\n        \"trust_checkpoint\": \"How this builds credibility\",\n        \"contrarian_checkpoint\": \"How this differs\",\n        \"likability_checkpoint\": \"What makes this human\",\n        \"rehook_checkpoint\": \"How interest is maintained\",\n        \"cta_checkpoint\": \"Why the CTA works\"\n      },\n      \"one_sentence_summary\": \"What would someone tell a friend?\"\n    }\n  ]\n}\n\n## CRITICAL RULES\n\n1. BE SPECIFIC - \"You missed $450 this dinner service\" beats \"You're losing money\"\n2. USE THE BRAND'S ACTUAL NUMBERS - \"22% revenue increase\", \"$25-$50/call\", \"30-40% of calls missed\", \"ROI in 10 days\"\n3. USE THEIR LANGUAGE - \"recapture\", \"revenue\", \"never miss\", \"offload\", \"lift ticket\"\n4. SPEAK TO THE PERSONA - \"Operator Michael\" overwhelmed during rush, needs ROI proof fast\n5. VISUAL CONCEPTS MUST BE GENERATABLE - No realistic faces. Use: phone screens with call logs, receipts showing missed revenue, POS terminals, before/after comparisons\n6. EACH CONCEPT MUST BE GENUINELY DIFFERENT - Different hook archetype, different visual approach\n7. AVOID FORBIDDEN WORDS - No \"revolutionary\", \"game-changer\", \"cutting-edge\", \"innovative solution\"\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 4000,\n  temperature: 0.8\n};\n\nreturn [{ json: { ...prevData, concept_generation_request: requestBody } }];"
+        "jsCode": "// =============================================================================\n// STEP 1: GENERATE 3 CREATIVE CONCEPTS\n// Uses Kallaway Psychology Framework for original ideation\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst visionJson = prevData.vision_json || {};\nconst psychologyAnalysis = prevData.marketing_insights || {};\nconst competitorCopy = prevData.body_text || '';\nconst brandInfo = prevData.brand_info || {};\n\n// DEBUG: Log brand info to verify it's populated\nconsole.log('Brand info keys:', Object.keys(brandInfo));\nconsole.log('Brand name:', brandInfo.brand_name);\nconsole.log('Pain points:', brandInfo.pain_points?.substring(0, 100));\n\nconst prompt = `You are an elite advertising creative director who specializes in direct-response ads for B2B SaaS. You use the Kallaway Psychology Framework to create ads that hack human behavior.\n\n## YOUR TASK\n\nCreate 3 ORIGINAL ad concepts for the brand below. Do NOT just swap words from the competitor ad. Instead:\n1. Understand WHY the competitor's ad psychology works\n2. Apply those psychological principles to the brand's unique positioning\n3. Generate fresh, specific, concrete concepts that would make the target audience stop scrolling\n\n## COMPETITOR AD ANALYSIS\n\n**What the competitor ad said:**\n${competitorCopy}\n\n**Visual structure that worked:**\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n**Psychology that made it effective:**\n${JSON.stringify(psychologyAnalysis, null, 2)}\n\n## BRAND CONTEXT (THIS IS WHO YOU'RE CREATING ADS FOR)\n\n**Brand:** ${brandInfo.brand_name || 'Unknown'}\n**Tagline:** ${brandInfo.tagline || ''}\n**What they do:** ${brandInfo.description || brandInfo.tagline || 'AI-powered solution'}\n**Product name:** ${brandInfo.product_name || brandInfo.brand_name || ''}\n\n**Target audience:** ${brandInfo.target_audience || 'Business owners'}\n\n**Audience persona:**\n${brandInfo.audience_persona || '- Not specified'}\n\n**Primary pain points (USE THESE - they are gold):**\n${brandInfo.pain_points || '- Not specified'}\n\n**Key USPs - specific proof points (USE THESE NUMBERS):**\n${brandInfo.key_usps || brandInfo.key_USPs || '- Not specified'}\n\n**Voice/tone:**\n${brandInfo.voice || 'professional, direct'}\n\n**Voice keywords (use these words):**\n${brandInfo.voice_keywords || ''}\n\n**Example headlines that represent the brand voice:**\n${brandInfo.example_headlines || '- Not specified'}\n\n**Forbidden words/phrases (NEVER USE):**\n${brandInfo.forbidden_words || 'None specified'}\n\n**Brand colors:**\n- Background: ${brandInfo.background_color || brandInfo.primary_color || '#0a0a0a'}\n- Text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent (CTA): ${brandInfo.accent_color || '#FADC3C'}\n\n## KALLAWAY PSYCHOLOGY FRAMEWORK\n\n**The Four Horsemen of Desires** (every ad must promise to unlock ONE primary):\n1. 💰 MONEY - Wealth, revenue, cost savings, financial freedom\n2. ⏰ TIME - Efficiency, automation, shortcuts, freedom\n3. 💪 HEALTH - Physical, mental, longevity (rare for B2B)\n4. 🏆 STATUS - Recognition, competitive advantage, being ahead\n\n**The Six Checkpoints** (every ad must pass ALL SIX):\n1. PAIN - Trigger and aggravate the specific pain point\n2. TRUST - Establish credibility (numbers, proof, specificity)\n3. CONTRARIAN - Offer a differentiated approach\n4. LIKABILITY - Be human, authentic, relatable\n5. REHOOK - Maintain interest through the entire ad\n6. CTA - Clear, compelling call to action\n\n**Hook Archetypes:**\n- FORTUNE TELLER: Predict a future outcome\n- MAGICIAN: Achieve the impossible\n- INVESTIGATOR: Uncover hidden truth\n- CONTRARIAN: Challenge accepted wisdom\n- TEACHER: Educational revelation\n- EXPERIMENTOR: Test with surprising results\n\n**Hook Formula (3 steps):**\n1. LEAN-IN: Pattern interrupt that grabs attention\n2. INTERJECTION: Pivot word (But, However, What if)\n3. SNAPBACK: Contrarian redirect\n\n## OUTPUT REQUIREMENTS\n\n{\n  \"concepts\": [\n    {\n      \"concept_name\": \"Short descriptive name\",\n      \"primary_horseman\": \"Money|Time|Status\",\n      \"hook_archetype\": \"Fortune Teller|Magician|Investigator|Contrarian|Teacher|Experimentor\",\n      \"hook\": {\n        \"full_hook\": \"Complete hook as it would appear\",\n        \"lean_in\": \"The attention-grabbing opener\",\n        \"interjection\": \"The pivot word/phrase\",\n        \"snapback\": \"The contrarian reframe\"\n      },\n      \"copy\": {\n        \"headline\": \"Main headline text\",\n        \"subheadline\": \"Supporting line\",\n        \"data_point\": \"Specific number/stat from brand USPs\",\n        \"cta_text\": \"Button text\",\n        \"cta_subtext\": \"Optional line below CTA\"\n      },\n      \"visual_concept\": {\n        \"description\": \"Detailed description of what the IMAGE should show\",\n        \"key_elements\": [\"List\", \"of\", \"visual\", \"elements\"],\n        \"mood\": \"The emotional tone\",\n        \"avoid\": \"What NOT to show\"\n      },\n      \"psychology_mapping\": {\n        \"pain_checkpoint\": \"How this triggers pain\",\n        \"trust_checkpoint\": \"How this builds credibility\",\n        \"contrarian_checkpoint\": \"How this differs\",\n        \"likability_checkpoint\": \"What makes this human\",\n        \"rehook_checkpoint\": \"How interest is maintained\",\n        \"cta_checkpoint\": \"Why the CTA works\"\n      },\n      \"one_sentence_summary\": \"What would someone tell a friend?\"\n    }\n  ]\n}\n\n## CRITICAL RULES\n\n1. BE SPECIFIC - Use concrete numbers and scenarios from the brand's USPs above. Generic claims fail; specific metrics convert.\n2. USE THE BRAND'S ACTUAL NUMBERS - Pull specific stats directly from the Key USPs provided in the brand context above.\n3. USE THEIR LANGUAGE - Mirror the brand's voice keywords and terminology from the brand context above.\n4. SPEAK TO THE PERSONA - Address the specific audience persona described above with their exact pain points and motivations.\n5. VISUAL CONCEPTS MUST BE GENERATABLE - No realistic human faces. Use: product mockups, app screenshots, before/after comparisons, data visualizations, symbolic imagery.\n6. EACH CONCEPT MUST BE GENUINELY DIFFERENT - Different hook archetype, different visual approach.\n7. AVOID FORBIDDEN WORDS - Check the forbidden words/phrases list above and never use those terms.\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 4000,\n  temperature: 0.8\n};\n\nreturn [{ json: { ...prevData, concept_generation_request: requestBody } }];"
       },
-      "id": "98c6e424-85ab-4194-8a83-b7adee660a98",
+      "id": "2a4cca7c-66c9-4a48-927e-22c7c1c21b18",
       "name": "Build Concept Generation Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -3472,
-        224
+        -7648,
+        416
       ]
     },
     {
@@ -84,45 +84,39 @@
           "timeout": 120000
         }
       },
-      "id": "f7bb590e-8e6f-44f2-a6f1-964b85069967",
+      "id": "6d886239-180d-4a27-b88d-00ae3dec3b30",
       "name": "Generate Concepts (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -3248,
-        224
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "FoHuYOrModyYssj3",
-          "name": "OpenRouter"
-        }
-      }
+        -7424,
+        416
+      ]
     },
     {
       "parameters": {
         "jsCode": "const prevData = $('Build Concept Generation Request').first().json;\nconst response = items[0].json;\n\nlet concepts = [];\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    const parsed = JSON.parse(jsonMatch[0]);\n    concepts = parsed.concepts || [];\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    concepts,\n    concepts_raw: response.choices?.[0]?.message?.content\n  }\n}];"
       },
-      "id": "e4561867-9b04-4fca-ba60-8f6ce0540c44",
+      "id": "f99aa572-2847-4b8c-afee-6ad3c459203b",
       "name": "Parse Concepts Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -3040,
-        224
+        -7200,
+        416
       ]
     },
     {
       "parameters": {
         "jsCode": "// =============================================================================\n// STEP 2: RANK & SELECT BEST CONCEPT\n// =============================================================================\n\nconst prevData = items[0].json;\nconst concepts = prevData.concepts || [];\nconst brandInfo = prevData.brand_info || {};\n\nif (concepts.length === 0) {\n  return [{ json: { ...prevData, error: 'No concepts to evaluate' } }];\n}\n\nconst prompt = `You are an advertising strategist who evaluates ad concepts using the Kallaway Psychology Framework.\n\n## CONCEPTS TO EVALUATE\n\n${JSON.stringify(concepts, null, 2)}\n\n## BRAND CONTEXT\n\n**Brand:** ${brandInfo.brand_name || 'Unknown'}\n**Target audience:** ${brandInfo.target_audience || 'Business owners'}\n**Primary pain points:** ${brandInfo.pain_points || 'Not specified'}\n**Key USPs:** ${brandInfo.key_USPs || brandInfo.key_usps || 'Not specified'}\n\n## SCORING CRITERIA (1-10 each)\n\n### Kallaway Six Checkpoints (40%)\n1. Pain Score - How viscerally does it trigger pain?\n2. Trust Score - How credible is the proof?\n3. Contrarian Score - How differentiated?\n4. Likability Score - How human/relatable?\n5. Rehook Score - Does it maintain interest?\n6. CTA Score - Is the CTA compelling?\n\n### Value Equation (30%)\n7. Contrast Score - Reality vs expectations?\n8. Relevance Score - How precisely targeted?\n\n### Execution (30%)\n9. Visual Feasibility - Can AI generate this? (10=simple graphics, 7-9=mockups/receipts, 4-6=scenes with people, 1-3=realistic faces)\n10. Brand Alignment - Uses actual pain points/USPs?\n11. Atomic Sharability - One sentence explanation?\n12. Scroll-Stop Power - Would this stop scrolling?\n\n## OUTPUT\n\n{\n  \"evaluations\": [\n    {\n      \"concept_name\": \"Name\",\n      \"scores\": {\n        \"pain\": 8, \"trust\": 7, \"contrarian\": 9, \"likability\": 6, \"rehook\": 7, \"cta\": 8,\n        \"contrast\": 8, \"relevance\": 9,\n        \"visual_feasibility\": 7, \"brand_alignment\": 8, \"atomic_sharability\": 9, \"scroll_stop_power\": 8\n      },\n      \"weighted_total\": 8.0,\n      \"strengths\": [\"What works\"],\n      \"weaknesses\": [\"What could improve\"]\n    }\n  ],\n  \"ranking\": [\n    {\"rank\": 1, \"concept_name\": \"Winner\", \"weighted_total\": 8.5}\n  ],\n  \"winner\": {\n    \"concept_name\": \"Name of winner\",\n    \"why_it_won\": \"2-3 sentence explanation\",\n    \"recommended_tweaks\": [\"Any improvements\"]\n  }\n}\n\nBe honest and critical. Output ONLY JSON.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.3\n};\n\nreturn [{ json: { ...prevData, ranking_request: requestBody } }];"
       },
-      "id": "34945046-72e1-490f-8b04-3cb7dfa81d91",
+      "id": "86d73cb3-a711-409c-bc56-85220b0524d8",
       "name": "Build Ranking Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2816,
-        224
+        -6992,
+        416
       ]
     },
     {
@@ -138,45 +132,87 @@
           "timeout": 120000
         }
       },
-      "id": "0de486eb-7644-4038-ad6d-1087bd618a7c",
+      "id": "87689181-24ae-4dd5-9ab8-c5e9b3cdad1b",
       "name": "Rank Concepts (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -2592,
-        224
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "FoHuYOrModyYssj3",
-          "name": "OpenRouter"
-        }
-      }
+        -6768,
+        416
+      ]
     },
     {
       "parameters": {
         "jsCode": "const prevData = $('Build Ranking Request').first().json;\nconst response = items[0].json;\n\nlet ranking = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    ranking = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\n// Find winning concept\nconst concepts = prevData.concepts || [];\nconst winnerName = ranking.winner?.concept_name || concepts[0]?.concept_name;\nconst winningConcept = concepts.find(c => c.concept_name === winnerName) || concepts[0];\n\nreturn [{\n  json: {\n    ...prevData,\n    ranking,\n    winning_concept: winningConcept,\n    ranking_raw: response.choices?.[0]?.message?.content\n  }\n}];"
       },
-      "id": "41918578-731f-4263-9132-d909f6b488e3",
+      "id": "a45f8266-1e0b-4cab-ba63-fd2b2952b505",
       "name": "Parse Ranking Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2368,
-        224
+        -6544,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// Build VisionStruct Generation Request - V1\n// Generates new VisionStruct from winning concept + original vibe\n// =============================================================================\n\nconst prevData = items[0].json;\nconst winningConcept = prevData.winning_concept || {};\nconst visionJson = prevData.vision_json || {};\nconst brandInfo = prevData.brand_info || {};\n\nconst copy = winningConcept.copy || {};\nconst hook = winningConcept.hook || {};\nconst visualConcept = winningConcept.visual_concept || {};\n\n// Extract vibe data from original VisionStruct\nconst photography = visionJson.photography || {};\nconst theVibe = visionJson.the_vibe || {};\nconst criticalElements = visionJson.critical_elements || {};\nconst whatMakesItWork = visionJson.what_makes_it_work || {};\nconst textOcr = visionJson.text_ocr || {};\n\n// Build vibe summary\nconst isUGC = photography.is_ugc === true || (photography.style || '').toLowerCase().includes('ugc');\nconst photographyStyle = photography.style || 'Unknown';\nconst qualityFeel = photography.quality_feel || 'Unknown';\nconst vibeEnergy = theVibe.energy || 'Unknown';\nconst vibeMood = theVibe.mood || 'Unknown';\nconst vibeAesthetic = theVibe.aesthetic || 'Unknown';\nconst authenticityLevel = theVibe.authenticity_level || 'Unknown';\nconst platformFeel = theVibe.platform_native_feel || 'Unknown';\nconst textOverlayStyle = theVibe.text_overlay_style || 'Unknown';\nconst copyStructure = textOcr.copy_structure || 'Unknown';\n\n// Detect native social style\nconst nativeSocialPatterns = ['instagram-story', 'instagram story', 'tiktok', 'native', 'screenshot', 'notes app', 'apple notes', 'text message', 'imessage', 'tweet', 'caption-storytelling', 'organic', 'user-generated'];\nconst platformFeelLower = platformFeel.toLowerCase();\nconst textOverlayStyleLower = textOverlayStyle.toLowerCase();\nconst aestheticLower = vibeAesthetic.toLowerCase();\n\nconst isNativeSocialStyle = nativeSocialPatterns.some(pattern =>\n  platformFeelLower.includes(pattern) ||\n  textOverlayStyleLower.includes(pattern) ||\n  aestheticLower.includes(pattern)\n) || isUGC;\n\nconst brandName = brandInfo.brand_name || 'Brand';\nconst aspectRatio = visionJson.meta?.aspect_ratio || '9:16';\n\nconst prompt = `You are a visual ad designer. Create a VisionStruct JSON specification for a new ad that CAPTURES THE EXACT VIBE of the original.\n\n## YOUR TASK\n\nCreate a NEW VisionStruct JSON that:\n1. Uses the WINNING CONCEPT's copy and psychology (provided below)\n2. BUT maintains the ORIGINAL AD's visual structure, layout, AND VIBE\n\n## CRITICAL: THE VIBE TO CAPTURE\n\n${isUGC ? '⚠️ THIS IS A UGC-STYLE AD - The generated ad MUST feel authentic, not polished or stock-like.' : ''}\n${isNativeSocialStyle ? `\n🚨 NATIVE SOCIAL STYLE DETECTED 🚨\nThe original ad uses \"${platformFeel}\" style with \"${textOverlayStyle}\" text.\n\n**MANDATORY RULES:**\n- DO NOT use brand fonts - use system fonts (San Francisco, Helvetica, Arial)\n- DO NOT use brand colors for text - use black #000000 or white #FFFFFF\n- DO NOT include logo objects\n- The image should look organic, NOT like a branded advertisement\n` : ''}\n\n**Photography Style:** ${photographyStyle}\n**Quality Feel:** ${qualityFeel}\n**Energy:** ${vibeEnergy}\n**Mood:** ${vibeMood}\n**Aesthetic:** ${vibeAesthetic}\n**Authenticity Level:** ${authenticityLevel}\n**Platform Feel:** ${platformFeel}\n**Text Style:** ${textOverlayStyle} / ${copyStructure}\n\n${criticalElements.what_makes_it_authentic ? '**What Makes It Authentic:** ' + criticalElements.what_makes_it_authentic : ''}\n${criticalElements.composition_signature ? '**Composition Signature:** ' + criticalElements.composition_signature : ''}\n${whatMakesItWork.scroll_stop_factor ? '**Scroll Stop Factor:** ' + whatMakesItWork.scroll_stop_factor : ''}\n\n## WINNING CONCEPT\n\n**Concept Name:** ${winningConcept.concept_name}\n**Horseman:** ${winningConcept.primary_horseman}\n**Hook Archetype:** ${winningConcept.hook_archetype}\n\n**Hook:**\n${JSON.stringify(hook, null, 2)}\n\n**Copy Options:**\n${JSON.stringify(copy, null, 2)}\n\n**Visual Direction:**\n${JSON.stringify(visualConcept, null, 2)}\n\n## ORIGINAL AD's FULL VISIONSTRUCT (match this structure AND vibe)\n\n\\`\\`\\`json\n${JSON.stringify(visionJson, null, 2)}\n\\`\\`\\`\n\n## BRAND STYLING ${isNativeSocialStyle ? '(FOR REFERENCE ONLY - DO NOT APPLY TO NATIVE SOCIAL)' : 'TO APPLY'}\n\n- Brand Name: ${brandName}\n- Background Color: ${brandInfo.background_color || '#0a0a0a'}\n- Text Color: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent Color: ${brandInfo.accent_color || '#FADC3C'}\n- Primary Font: ${brandInfo.primary_font || 'Inter'}\n\n${isNativeSocialStyle ? '**FOR NATIVE SOCIAL:** Use original text styling (system fonts, black/white text). Result should look like organic social post.' : ''}\n\n## OUTPUT FORMAT\n\nGenerate complete VisionStruct JSON with:\n1. **global_context**: Scene description matching original's style AND vibe\n2. **composition**: COPY the original's layout_type exactly\n3. **photography**: COPY original's style, quality_feel, is_ugc\n4. **the_vibe**: COPY original's energy, mood, aesthetic, authenticity_level, platform_native_feel\n5. **critical_elements**: Update for new brand but maintain composition_signature\n6. **objects**: Match original's object types and positions\n7. **text_ocr**: New text with positions matching original's placement AND copy_structure\n8. **color_palette**: ${isNativeSocialStyle ? 'Match original colors (no brand colors)' : 'Use brand colors'}\n9. **brand_styling**: Brand colors and fonts\n\n**VIBE RULES:**\n- If original was UGC-style, output MUST be UGC-style (is_ugc: true)\n- If original had iPhone-authentic quality, yours should too\n- Match energy, mood, and intimacy level exactly\n- NEVER make polished/stock ad from UGC original\n\nOutput ONLY valid JSON, no markdown code blocks.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 8000,\n  temperature: 0.4\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    visionstruct_generation_request: requestBody,\n    is_native_social_style: isNativeSocialStyle,\n    is_ugc: isUGC\n  }\n}];"
+      },
+      "id": "3ba01324-c3c3-446a-9843-44f48e39ecc3",
+      "name": "Build VisionStruct Generation Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6320,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.visionstruct_generation_request) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "65a7ce39-a4f6-41b1-a16c-d2bd575f56a4",
+      "name": "Generate VisionStruct",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -6096,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================================================\n// Parse VisionStruct Response\n// =============================================================================\n\nconst prevData = $('Build VisionStruct Generation Request').first().json;\nconst response = items[0].json;\n\nlet generatedVisionstruct = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  // Try to parse JSON, handling potential markdown code blocks\n  let jsonContent = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  const jsonMatch = jsonContent.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    generatedVisionstruct = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n  generatedVisionstruct = { error: 'Failed to parse', raw_preview: response.choices?.[0]?.message?.content?.substring(0, 500) };\n}\n\nconst { visionstruct_generation_request, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_visionstruct: generatedVisionstruct,\n    visionstruct_raw: response.choices?.[0]?.message?.content\n  }\n}];"
+      },
+      "id": "5d039c2c-ac58-4bfc-b814-0e141de9a507",
+      "name": "Parse VisionStruct Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5872,
+        416
       ]
     },
     {
       "parameters": {
         "jsCode": "// =============================================================================\n// STEP 3: CONSTRUCT IMAGE SPEC JSON\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst winningConcept = prevData.winning_concept || {};\nconst ranking = prevData.ranking || {};\nconst visionJson = prevData.vision_json || {};\nconst brandInfo = prevData.brand_info || {};\n\nconst prompt = `You are a technical art director converting a creative concept into an image generation specification.\n\n## WINNING CONCEPT\n\n${JSON.stringify(winningConcept, null, 2)}\n\n## RECOMMENDED TWEAKS\n\n${JSON.stringify(ranking.winner?.recommended_tweaks || [], null, 2)}\n\n## COMPETITOR'S VISUAL STRUCTURE (Layout reference)\n\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n## BRAND STYLING (MUST USE EXACTLY)\n\n**Colors:**\n- Background: ${brandInfo.background_color || '#0a0a0a'}\n- Primary text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent/CTA: ${brandInfo.accent_color || '#FADC3C'}\n${brandInfo.accent_color_orange ? `- Orange: ${brandInfo.accent_color_orange}` : ''}\n${brandInfo.accent_color_blue ? `- Blue: ${brandInfo.accent_color_blue}` : ''}\n\n**Typography:**\n- Font: ${brandInfo.primary_font || 'Inter'}\n- Fallback: ${brandInfo.font_fallback || 'Helvetica, sans-serif'}\n- Tracking: ${brandInfo.typography_tracking || '-2%'}\n- Line height: ${brandInfo.typography_line_height || '95%'}\n\n## OUTPUT FORMAT\n\n{\n  \"ad_concept_name\": \"Name_With_Underscores\",\n  \"file_specs\": {\n    \"dimensions\": \"1080x1920\",\n    \"format\": \"9:16 Vertical\"\n  },\n  \"brand_styling\": {\n    \"background_color\": \"#0a0a0a\",\n    \"primary_accent_color\": \"#FADC3C\",\n    \"secondary_accent_color\": \"#f7f4f0\",\n    \"primary_font\": \"Font name\",\n    \"typography_treatment\": \"Bold headlines, clean body\"\n  },\n  \"layout_layers\": [\n    {\n      \"layer_name\": \"Headline\",\n      \"type\": \"text\",\n      \"content\": \"Headline text\",\n      \"style\": { \"color\": \"#FFFFFF\", \"weight\": \"800\", \"size_px\": 72, \"alignment\": \"left\" },\n      \"position\": { \"top_px\": 120, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Subheadline\",\n      \"type\": \"text\",\n      \"content\": \"Subheadline text\",\n      \"style\": { \"color\": \"#FADC3C\", \"weight\": \"600\", \"size_px\": 36 },\n      \"position\": { \"top_px\": 320, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Visual_Element\",\n      \"type\": \"image_placeholder\",\n      \"position\": { \"top_px\": 450, \"center_x\": true, \"width_px\": 900, \"height_px\": 600 },\n      \"image_generation_prompt\": \"Detailed 50+ word prompt for the visual element only. Specify colors (#FADC3C yellow, #0a0a0a black), style, objects. Use 'on dark background'. NO realistic human faces.\"\n    },\n    {\n      \"layer_name\": \"Data_Point\",\n      \"type\": \"text_badge\",\n      \"content\": \"22% more revenue\",\n      \"style\": { \"color\": \"#0a0a0a\", \"background_color\": \"#FADC3C\", \"weight\": \"700\", \"size_px\": 32 },\n      \"position\": { \"top_px\": 1100, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"CTA_Button\",\n      \"type\": \"button\",\n      \"content\": \"Button Text\",\n      \"style\": { \"background_color\": \"#FADC3C\", \"text_color\": \"#0a0a0a\", \"weight\": \"700\", \"size_px\": 42, \"border_radius_px\": 100 },\n      \"position\": { \"bottom_px\": 120, \"center_x\": true }\n    }\n  ]\n}\n\n## RULES\n\n1. USE EXACT BRAND COLORS - Hex codes are non-negotiable\n2. PROPER LAYER POSITIONS - Headline at top, visual in middle, CTA at bottom\n3. IMAGE PROMPT - Describe visual only, not text. Specify style/colors. Use \"on dark background\"\n4. TEXT CONTENT - Use exact copy from winning concept\n5. NO REALISTIC FACES in image prompt\n6. image_generation_prompt must be 50+ words with specific details\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.4\n};\n\nreturn [{ json: { ...prevData, json_construction_request: requestBody } }];"
       },
-      "id": "4b6ef283-5b05-476e-b97e-20c8660a24fa",
+      "id": "febeb7b3-0f75-4970-bc06-6220598ae850",
       "name": "Build JSON Construction Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2160,
-        224
+        -5648,
+        416
       ]
     },
     {
@@ -192,45 +228,39 @@
           "timeout": 120000
         }
       },
-      "id": "95ec85b0-f943-4cd5-af76-bb51c298f20b",
+      "id": "bc33bef4-639a-4df0-bbab-ccd6843f102b",
       "name": "Construct JSON (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1936,
-        224
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "FoHuYOrModyYssj3",
-          "name": "OpenRouter"
-        }
-      }
+        -5424,
+        416
+      ]
     },
     {
       "parameters": {
         "jsCode": "const prevData = $('Build JSON Construction Request').first().json;\nconst response = items[0].json;\n\nlet imageSpec = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    imageSpec = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    image_generation_prompt: imageSpec,\n    image_spec_raw: response.choices?.[0]?.message?.content\n  }\n}];"
       },
-      "id": "69b95c15-4114-433b-bfe2-2ce2649e90b2",
+      "id": "ca4ab83f-446e-439c-9125-cd038f58031f",
       "name": "Parse Final JSON",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1712,
-        224
+        -5200,
+        416
       ]
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// Build Image Request for Gemini Image Generation - V7 FIXED\n// Removes pixel values from prompt to prevent them being rendered as text\n// =============================================================================\n\nconst prevData = items[0].json;\nconst imageGenPrompt = prevData.image_generation_prompt || {};\nconst fileSpecs = imageGenPrompt.file_specs || {};\nconst brandStyling = imageGenPrompt.brand_styling || {};\nconst layers = imageGenPrompt.layout_layers || [];\nconst brandInfo = prevData.brand_info || {};\n\n// Determine aspect ratio\nlet aspectRatio = '9:16';\nconst format = fileSpecs.format || '';\nconst dimensions = fileSpecs.dimensions || '';\n\nif (format.includes('1:1') || dimensions === '1080x1080') aspectRatio = '1:1';\nelse if (format.includes('4:5') || dimensions === '1080x1350') aspectRatio = '4:5';\nelse if (format.includes('16:9') || dimensions === '1920x1080') aspectRatio = '16:9';\n\n// Extract text content from layers\nconst headlines = [];\nconst subheadlines = [];\nlet ctaText = '';\nlet dataPoint = '';\nlet visualDescription = '';\n\nlayers.forEach(layer => {\n  const name = (layer.layer_name || '').toLowerCase();\n  const content = layer.content || '';\n  \n  if (name.includes('headline') && !name.includes('sub')) {\n    headlines.push(content);\n  } else if (name.includes('subheadline') || name.includes('sub')) {\n    subheadlines.push(content);\n  } else if (name.includes('cta') || name.includes('button')) {\n    ctaText = content;\n  } else if (name.includes('data') || name.includes('stat')) {\n    dataPoint = content;\n  } else if (layer.type === 'image_placeholder' || layer.type === 'generated_image') {\n    visualDescription = layer.image_generation_prompt || '';\n  }\n});\n\n// Build natural language prompt - NO PIXEL VALUES\nlet textPrompt = `Create a professional social media advertisement with these specifications:\n\n## IMAGE FORMAT\n- Vertical ${aspectRatio} format (${dimensions || '1080x1920'})\n- Full-screen mobile ad\n\n## BRAND COLORS (USE EXACTLY)\n- Background: ${brandStyling.background_color || brandInfo.background_color || '#0a0a0a'} (dark)\n- Accent Color: ${brandStyling.primary_accent_color || brandInfo.accent_color || '#FADC3C'} (yellow - for CTA and highlights)\n- Text: ${brandStyling.secondary_accent_color || brandInfo.secondary_color || '#FFFFFF'} (white)\n\n## CONTENT TO DISPLAY\n\n**HEADLINE (at top, large bold text):**\n${headlines.length > 0 ? headlines.join('\\n') : 'No headline'}\n\n${subheadlines.length > 0 ? `**SUBHEADLINE (below headline, accent color):**\\n${subheadlines.join('\\n')}` : ''}\n\n**VISUAL ELEMENT (center of ad):**\n${visualDescription || 'Create a relevant supporting visual'}\n\n${dataPoint ? `**DATA CALLOUT (highlighted badge):**\\n\"${dataPoint}\"\\n- Yellow background with dark text` : ''}\n\n**CTA BUTTON (bottom of ad):**\n${ctaText ? `\"${ctaText}\"` : 'Call to action'}\n- Pill-shaped button\n- Yellow background (#FADC3C) with dark text\n- Centered at bottom\n\n## DESIGN RULES\n1. Dark background throughout\n2. High contrast, readable text\n3. Clean, modern, professional look\n4. All text must be crisp and legible\n5. IMPORTANT: Do NOT include any numbers, measurements, pixel values, or technical specs as visible text\n6. Only show the headline, subheadline, data point, and CTA text specified above\n\nGenerate a complete, polished advertisement ready for social media.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  messages: [{ role: \"user\", content: textPrompt }],\n  max_tokens: 4096\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    image_prompt_text: textPrompt,\n    image_prompt_json: imageGenPrompt,\n    requested_aspect_ratio: aspectRatio\n  }\n}];"
+        "jsCode": "// =============================================================================\n// Build Image Request - V8 VIBE-AWARE\n// Uses generated_visionstruct with vibe capture for authentic ad generation\n// =============================================================================\n\nconst prevData = items[0].json;\nconst generatedVisionstruct = prevData.generated_visionstruct || {};\nconst brandInfo = prevData.brand_info || {};\nconst isNativeSocialStyle = prevData.is_native_social_style || false;\nconst isUGC = prevData.is_ugc || false;\n\n// Aspect ratio dimensions map\nconst ASPECT_RATIO_MAP = {\n  '9:16': { width: 1080, height: 1920, format: '9:16 Vertical' },\n  '4:5': { width: 1080, height: 1350, format: '4:5 Portrait' },\n  '1:1': { width: 1080, height: 1080, format: '1:1 Square' },\n  '16:9': { width: 1920, height: 1080, format: '16:9 Landscape' },\n  '4:3': { width: 1440, height: 1080, format: '4:3' }\n};\n\n// Get aspect ratio from generated VisionStruct or original\nlet aspectRatio = generatedVisionstruct.meta?.aspect_ratio || prevData.vision_json?.meta?.aspect_ratio || '4:5';\nif (aspectRatio.includes('Vertical')) aspectRatio = '9:16';\nif (aspectRatio.includes('Square')) aspectRatio = '1:1';\nif (aspectRatio.includes('Portrait') || aspectRatio.includes('4:5')) aspectRatio = '4:5';\nif (aspectRatio.includes('Landscape') || aspectRatio.includes('16:9')) aspectRatio = '16:9';\n\nconst dims = ASPECT_RATIO_MAP[aspectRatio] || ASPECT_RATIO_MAP['4:5'];\n\n// Extract vibe data from generated VisionStruct\nconst photography = generatedVisionstruct.photography || {};\nconst theVibe = generatedVisionstruct.the_vibe || {};\nconst criticalElements = generatedVisionstruct.critical_elements || {};\n\nconst photographyStyle = photography.style || '';\nconst qualityFeel = photography.quality_feel || '';\nconst authenticityMarkers = Array.isArray(photography.authenticity_markers) ? photography.authenticity_markers.join(', ') : '';\n\nconst vibeEnergy = theVibe.energy || '';\nconst vibeMood = theVibe.mood || '';\nconst vibeAesthetic = theVibe.aesthetic || '';\nconst authenticityLevel = theVibe.authenticity_level || '';\nconst platformFeel = theVibe.platform_native_feel || '';\nconst textOverlayStyle = theVibe.text_overlay_style || '';\nconst storyImplied = theVibe.story_implied || '';\n\nconst compositionSignature = criticalElements.composition_signature || '';\nconst whatMakesItAuthentic = criticalElements.what_makes_it_authentic || '';\n\n// Build vibe-specific instructions\nlet vibeInstructions = '';\n\n// Native social style takes highest priority\nif (isNativeSocialStyle) {\n  vibeInstructions = `\n## CRITICAL: NATIVE SOCIAL STYLE - ZERO BRANDING IN IMAGE\n\nThis ad uses a \"${platformFeel}\" style with \"${textOverlayStyle}\" text overlay.\nThe image MUST look like an ORGANIC social media post, NOT a branded advertisement.\n\n**ABSOLUTE REQUIREMENTS:**\n- DO NOT use brand fonts - use ONLY system fonts (San Francisco, Helvetica, Arial)\n- DO NOT use brand colors for text - use ONLY black (#000000) or white (#FFFFFF)\n- DO NOT include ANY brand name or logo ANYWHERE in the image\n- The image should look like it was posted organically by a real person\n\n**Photography Style:** ${photographyStyle || 'Authentic/candid'}\n**Quality Feel:** ${qualityFeel || 'iPhone-quality'} - Match this EXACTLY\n**Platform Feel:** ${platformFeel}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Authenticity Level: ${authenticityLevel}\n\n**Story Being Told:** ${storyImplied || 'A real person sharing a genuine moment'}\n\nDO NOT: Include brand name or logo, use brand fonts/colors, make it look like a branded ad\nDO: Make text look like native social captions (system fonts, black/white), make photo look phone-taken`;\n} else if (isUGC || photographyStyle.toLowerCase().includes('ugc') || photographyStyle.toLowerCase().includes('selfie')) {\n  vibeInstructions = `\n## CRITICAL: UGC/AUTHENTIC STYLE REQUIRED\n\nThis ad MUST look like authentic user-generated content, NOT a polished stock photo.\n\n**Photography Style:** ${photographyStyle}\n**Quality Feel:** ${qualityFeel} - Match this EXACTLY\n**Authenticity Markers:** ${authenticityMarkers || 'natural lighting, real environment, candid feel'}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Platform Feel: ${platformFeel}\n\n**Story Being Told:** ${storyImplied || 'A real person sharing a genuine moment'}\n\n**Composition Signature:** ${compositionSignature || 'Authentic, unposed feel'}\n**What Makes It Authentic:** ${whatMakesItAuthentic || 'Real environment, natural lighting'}\n\nDO NOT: Use stock photography, overly polished studio lighting, traditional ad aesthetics\nDO: Make it look phone-taken, include environmental imperfections, capture authentic energy`;\n} else if (photographyStyle || vibeEnergy || vibeMood) {\n  vibeInstructions = `\n## VISUAL STYLE TO MATCH\n\n**Photography Style:** ${photographyStyle}\n**Quality Feel:** ${qualityFeel}\n**Authenticity Level:** ${authenticityLevel}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Platform Feel: ${platformFeel}\n\n${compositionSignature ? '**Composition Signature:** ' + compositionSignature : ''}\n\nMatch this visual style and energy precisely.`;\n}\n\n// Text overlay style instructions\nlet textStyleInstructions = '';\nconst textOverlayStyleLower = textOverlayStyle.toLowerCase();\nif (textOverlayStyleLower.includes('caption') || textOverlayStyleLower.includes('story')) {\n  textStyleInstructions = `\n## TEXT STYLE: CAPTION/STORY FORMAT\nThe text should look like native social media captions - multi-line, story-driven, like someone talking directly to the viewer. NOT traditional headline/subhead ad copy.`;\n} else if (textOverlayStyleLower.includes('headline')) {\n  textStyleInstructions = `\n## TEXT STYLE: HEADLINE FOCUSED\nBold, punchy headline with minimal supporting text. Traditional ad hierarchy.`;\n}\n\n// Build the final prompt\nlet textPrompt = `Generate an advertisement image that EXACTLY matches this VisionStruct specification:\n\n\\`\\`\\`json\n${JSON.stringify(generatedVisionstruct, null, 2)}\n\\`\\`\\`\n\n## IMAGE REQUIREMENTS\n- Dimensions: ${dims.width}x${dims.height} pixels (${aspectRatio})\n- Format: High-quality PNG\n\n## ABSOLUTE REQUIREMENT: NO LOGOS OR BRAND NAMES\n\n🚫 CRITICAL - READ THIS CAREFULLY 🚫\n\nDo NOT include ANY of the following in the generated image:\n- The brand name \"${brandInfo.brand_name || 'the brand'}\" - DO NOT write this text anywhere\n- ANY logo, wordmark, or brand identifier\n- ANY text that looks like a company name or logo\n- Generic \"brand\" placeholder text\n- Watermarks or brand marks of any kind\n\nThe image must contain ZERO brand identification. If the VisionStruct or any instruction asks for a logo, IGNORE that instruction. Generate the ad creative WITHOUT any logo or brand name text.\n\nThis is NON-NEGOTIABLE. A logo-free image is required.\n${vibeInstructions}\n${textStyleInstructions}\n\n## STRUCTURAL INSTRUCTIONS\n\nFollow the VisionStruct JSON precisely:\n\n1. **LAYOUT**: Use the exact layout_type from composition\n2. **OBJECTS**: Render each object from the objects array at their specified positions\n3. **TEXT**: Render all text from text_ocr at their specified positions with the correct styling\n4. **COLORS**: Use the exact hex colors from color_palette and brand_styling\n5. **STYLE**: Match the scene_description and mood from global_context\n6. **BACKGROUND**: If layout_type is \"Layered\" use photo background with text overlay\n7. **PEOPLE**: Only include people if the objects array contains Person items\n\nThe VisionStruct is your complete blueprint. Follow it precisely, paying special attention to the VIBE and authenticity level.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  messages: [{ role: \"user\", content: textPrompt }],\n  max_tokens: 4096\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    image_prompt_text: textPrompt,\n    requested_aspect_ratio: aspectRatio,\n    requested_dimensions: `${dims.width}x${dims.height}`,\n    vibe_mode: isNativeSocialStyle ? 'native_social' : (isUGC ? 'ugc' : 'standard')\n  }\n}];"
       },
-      "id": "11dd019e-bfe0-444d-91ca-8602dac7543a",
+      "id": "b9647d7a-1136-41d5-9b4b-3eb14d8f35c6",
       "name": "Build Image Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1488,
-        224
+        -4976,
+        416
       ]
     },
     {
@@ -246,32 +276,26 @@
           "timeout": 180000
         }
       },
-      "id": "29ba76df-45de-49f2-91e7-c5d8959c51ff",
+      "id": "d7b1d94b-1454-47d3-b3eb-af22e10dda19",
       "name": "Generate Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1280,
-        224
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "FoHuYOrModyYssj3",
-          "name": "OpenRouter"
-        }
-      }
+        -4752,
+        416
+      ]
     },
     {
       "parameters": {
         "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // Gemini returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  if (Array.isArray(images) && images.length > 0) {\n    const firstImage = images[0];\n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      if (dataUrl.startsWith('data:image/')) {\n        imageBase64 = dataUrl.split(',')[1];\n      } else if (dataUrl.startsWith('http')) {\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Also check content for base64 or URL\n  const content = response.choices?.[0]?.message?.content || '';\n  if (!imageBase64 && !imageUrl) {\n    const urlMatch = content.match(/https?:\\/\\/[^\\s\"']+\\.(png|jpg|jpeg|webp)/i);\n    if (urlMatch) {\n      imageUrl = urlMatch[0];\n    }\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nconst { image_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED'\n  }\n}];"
       },
-      "id": "7c69232c-11da-4992-8a7a-5a3c5bab8951",
+      "id": "4a14b914-1432-4d78-bc1f-4eaf3f120a1e",
       "name": "Parse Image Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1056,
-        224
+        -4528,
+        416
       ]
     },
     {
@@ -297,26 +321,26 @@
         },
         "options": {}
       },
-      "id": "cc655334-74fa-420b-bce8-8413ea347036",
+      "id": "a8e6a431-1657-4a9f-b6ec-333b9b7fe7b6",
       "name": "Check Image Result",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -832,
-        224
+        -4304,
+        416
       ]
     },
     {
       "parameters": {
         "jsCode": "const data = items[0].json;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst adId = data.ad_archive_id || 'unknown';\nconst conceptName = data.winning_concept?.concept_name?.replace(/\\s+/g, '_') || 'ad';\n\nif (data.generated_image_base64) {\n  let base64Data = data.generated_image_base64;\n  if (base64Data.includes(',')) base64Data = base64Data.split(',')[1];\n  base64Data = base64Data.replace(/\\s/g, '');\n  \n  let mimeType = 'image/jpeg', ext = 'jpg';\n  if (base64Data.startsWith('iVBORw')) { mimeType = 'image/png'; ext = 'png'; }\n  \n  const filename = `${conceptName}_${adId}_${timestamp}.${ext}`;\n  const buffer = Buffer.from(base64Data, 'base64');\n  \n  return [{\n    json: { ...data, filename, detected_mime_type: mimeType, file_size_bytes: buffer.length },\n    binary: { data: { data: buffer.toString('base64'), mimeType, fileName: filename } }\n  }];\n}\n\nreturn [{ json: { ...data, filename: `${conceptName}_${adId}_${timestamp}.jpg`, error: 'No base64' } }];"
       },
-      "id": "fb2a8a30-9595-4009-bf63-4392111d6988",
+      "id": "30140986-3759-4227-9eb2-15f586f23767",
       "name": "Prepare for Upload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -608,
-        112
+        -4080,
+        320
       ]
     },
     {
@@ -336,13 +360,13 @@
         },
         "options": {}
       },
-      "id": "e99b88bf-f788-44be-ac3d-011ae51a0be7",
+      "id": "becf2b6d-530f-40cd-8e15-3ff9eab900ee",
       "name": "Upload to Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -400,
-        112
+        -3856,
+        320
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -367,13 +391,13 @@
         },
         "options": {}
       },
-      "id": "e85e8568-f99c-4c1a-ac1f-1709ca50cffb",
+      "id": "3dcc72fe-3c67-415a-be01-aa75e5eb6eb9",
       "name": "Get Shareable Link",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -176,
-        112
+        -3632,
+        320
       ],
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -397,7 +421,7 @@
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "Competitor_Ads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qZY6RP6xCmqifmEG4xXYbYMrPSXMQL0YcTGdi9UIJk/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -1037,6 +1061,66 @@
               "canBeUsedToMatch": true
             },
             {
+              "id": "detected_aspect_ratio",
+              "displayName": "detected_aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detected_background_type",
+              "displayName": "detected_background_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detected_has_photo",
+              "displayName": "detected_has_photo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "key_value_proposition",
+              "displayName": "key_value_proposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
               "id": "row_number",
               "displayName": "row_number",
               "required": false,
@@ -1055,18 +1139,18 @@
           "cellFormat": "USER_ENTERED"
         }
       },
-      "id": "e61a8007-4bd3-4985-9b16-19b7c49bcfaf",
+      "id": "af3c8c41-11f3-41e4-abff-aa157b01b65e",
       "name": "Update Google Sheet - Success",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        48,
-        112
+        -3408,
+        320
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     },
@@ -1074,13 +1158,13 @@
       "parameters": {
         "jsCode": "return [{ json: { ...items[0].json, status: 'COPY_ONLY_NO_IMAGE' } }];"
       },
-      "id": "adc4485a-6a9f-42ba-9e5d-e1160320bdb0",
+      "id": "84856236-0890-4bdf-84b6-f0a3e579d746",
       "name": "Skip - No Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -608,
-        320
+        -4080,
+        512
       ]
     },
     {
@@ -1098,7 +1182,7 @@
           "value": "gid=0",
           "mode": "list",
           "cachedResultName": "Competitor_Ads",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/16MwvfbNAdxOdNVJ2EBua3y5LvJY7bk549VfXImSRmKI/edit#gid=0"
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/14qZY6RP6xCmqifmEG4xXYbYMrPSXMQL0YcTGdi9UIJk/edit#gid=0"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -1739,6 +1823,66 @@
               "removed": false
             },
             {
+              "id": "detected_aspect_ratio",
+              "displayName": "detected_aspect_ratio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detected_background_type",
+              "displayName": "detected_background_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detected_has_photo",
+              "displayName": "detected_has_photo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_secondary_horseman",
+              "displayName": "psychology_secondary_horseman",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "psychology_one_std_deviation",
+              "displayName": "psychology_one_std_deviation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "key_value_proposition",
+              "displayName": "key_value_proposition",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
               "id": "row_number",
               "displayName": "row_number",
               "required": false,
@@ -1755,18 +1899,18 @@
         },
         "options": {}
       },
-      "id": "2597aeb9-86a0-4677-a839-1986857d5694",
+      "id": "13b4a2b5-93b1-49cc-a5b5-b2c8532b336f",
       "name": "Update Sheet - Copy Only",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.4,
       "position": [
-        -400,
-        320
+        -3856,
+        512
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "7rou2y9XeyGHdBO0",
-          "name": "Google Sheets account matthew@emerald"
+          "name": "Google Sheets OAuth2"
         }
       }
     }
@@ -1862,6 +2006,39 @@
       ]
     },
     "Parse Ranking Response": {
+      "main": [
+        [
+          {
+            "node": "Build VisionStruct Generation Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build VisionStruct Generation Request": {
+      "main": [
+        [
+          {
+            "node": "Generate VisionStruct",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate VisionStruct": {
+      "main": [
+        [
+          {
+            "node": "Parse VisionStruct Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse VisionStruct Response": {
       "main": [
         [
           {
@@ -2003,13 +2180,15 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
-  "versionId": "324f55ac-134d-40dc-8bc4-c35a85fa1437",
+  "versionId": "32a51d5e-0877-4221-b6d2-821c7c3eb197",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5f21038f187f7ddf12e940bb55bc64eb117a28b98f8b5539845218f69f7a8aa9"
   },
-  "id": "7pSG9edVFzXkFO9W",
+  "id": "jtGqHXa2IvPlU3Ja",
   "tags": []
 }
