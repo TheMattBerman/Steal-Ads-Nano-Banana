@@ -204,54 +204,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// =============================================================================\n// STEP 3: CONSTRUCT IMAGE SPEC JSON\n// =============================================================================\n\nconst prevData = items[0].json;\n\nconst winningConcept = prevData.winning_concept || {};\nconst ranking = prevData.ranking || {};\nconst visionJson = prevData.vision_json || {};\nconst brandInfo = prevData.brand_info || {};\n\nconst prompt = `You are a technical art director converting a creative concept into an image generation specification.\n\n## WINNING CONCEPT\n\n${JSON.stringify(winningConcept, null, 2)}\n\n## RECOMMENDED TWEAKS\n\n${JSON.stringify(ranking.winner?.recommended_tweaks || [], null, 2)}\n\n## COMPETITOR'S VISUAL STRUCTURE (Layout reference)\n\n${JSON.stringify(visionJson.composition || {}, null, 2)}\n\n## BRAND STYLING (MUST USE EXACTLY)\n\n**Colors:**\n- Background: ${brandInfo.background_color || '#0a0a0a'}\n- Primary text: ${brandInfo.secondary_color || '#f7f4f0'}\n- Accent/CTA: ${brandInfo.accent_color || '#FADC3C'}\n${brandInfo.accent_color_orange ? `- Orange: ${brandInfo.accent_color_orange}` : ''}\n${brandInfo.accent_color_blue ? `- Blue: ${brandInfo.accent_color_blue}` : ''}\n\n**Typography:**\n- Font: ${brandInfo.primary_font || 'Inter'}\n- Fallback: ${brandInfo.font_fallback || 'Helvetica, sans-serif'}\n- Tracking: ${brandInfo.typography_tracking || '-2%'}\n- Line height: ${brandInfo.typography_line_height || '95%'}\n\n## OUTPUT FORMAT\n\n{\n  \"ad_concept_name\": \"Name_With_Underscores\",\n  \"file_specs\": {\n    \"dimensions\": \"1080x1920\",\n    \"format\": \"9:16 Vertical\"\n  },\n  \"brand_styling\": {\n    \"background_color\": \"#0a0a0a\",\n    \"primary_accent_color\": \"#FADC3C\",\n    \"secondary_accent_color\": \"#f7f4f0\",\n    \"primary_font\": \"Font name\",\n    \"typography_treatment\": \"Bold headlines, clean body\"\n  },\n  \"layout_layers\": [\n    {\n      \"layer_name\": \"Headline\",\n      \"type\": \"text\",\n      \"content\": \"Headline text\",\n      \"style\": { \"color\": \"#FFFFFF\", \"weight\": \"800\", \"size_px\": 72, \"alignment\": \"left\" },\n      \"position\": { \"top_px\": 120, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Subheadline\",\n      \"type\": \"text\",\n      \"content\": \"Subheadline text\",\n      \"style\": { \"color\": \"#FADC3C\", \"weight\": \"600\", \"size_px\": 36 },\n      \"position\": { \"top_px\": 320, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"Visual_Element\",\n      \"type\": \"image_placeholder\",\n      \"position\": { \"top_px\": 450, \"center_x\": true, \"width_px\": 900, \"height_px\": 600 },\n      \"image_generation_prompt\": \"Detailed 50+ word prompt for the visual element only. Specify colors (#FADC3C yellow, #0a0a0a black), style, objects. Use 'on dark background'. NO realistic human faces.\"\n    },\n    {\n      \"layer_name\": \"Data_Point\",\n      \"type\": \"text_badge\",\n      \"content\": \"22% more revenue\",\n      \"style\": { \"color\": \"#0a0a0a\", \"background_color\": \"#FADC3C\", \"weight\": \"700\", \"size_px\": 32 },\n      \"position\": { \"top_px\": 1100, \"left_px\": 60 }\n    },\n    {\n      \"layer_name\": \"CTA_Button\",\n      \"type\": \"button\",\n      \"content\": \"Button Text\",\n      \"style\": { \"background_color\": \"#FADC3C\", \"text_color\": \"#0a0a0a\", \"weight\": \"700\", \"size_px\": 42, \"border_radius_px\": 100 },\n      \"position\": { \"bottom_px\": 120, \"center_x\": true }\n    }\n  ]\n}\n\n## RULES\n\n1. USE EXACT BRAND COLORS - Hex codes are non-negotiable\n2. PROPER LAYER POSITIONS - Headline at top, visual in middle, CTA at bottom\n3. IMAGE PROMPT - Describe visual only, not text. Specify style/colors. Use \"on dark background\"\n4. TEXT CONTENT - Use exact copy from winning concept\n5. NO REALISTIC FACES in image prompt\n6. image_generation_prompt must be 50+ words with specific details\n\nOutput ONLY the JSON object.`;\n\nconst requestBody = {\n  model: \"anthropic/claude-sonnet-4.5\",\n  messages: [{ role: \"user\", content: prompt }],\n  max_tokens: 3000,\n  temperature: 0.4\n};\n\nreturn [{ json: { ...prevData, json_construction_request: requestBody } }];"
-      },
-      "id": "febeb7b3-0f75-4970-bc06-6220598ae850",
-      "name": "Build JSON Construction Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -5648,
-        416
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://openrouter.ai/api/v1/chat/completions",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.json_construction_request) }}",
-        "options": {
-          "timeout": 120000
-        }
-      },
-      "id": "bc33bef4-639a-4df0-bbab-ccd6843f102b",
-      "name": "Construct JSON (Claude)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -5424,
-        416
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const prevData = $('Build JSON Construction Request').first().json;\nconst response = items[0].json;\n\nlet imageSpec = {};\n\ntry {\n  const content = response.choices?.[0]?.message?.content || '';\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    imageSpec = JSON.parse(jsonMatch[0]);\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    image_generation_prompt: imageSpec,\n    image_spec_raw: response.choices?.[0]?.message?.content\n  }\n}];"
-      },
-      "id": "ca4ab83f-446e-439c-9125-cd038f58031f",
-      "name": "Parse Final JSON",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -5200,
-        416
-      ]
-    },
-    {
-      "parameters": {
         "jsCode": "// =============================================================================\n// Build Image Request - V8 VIBE-AWARE\n// Uses generated_visionstruct with vibe capture for authentic ad generation\n// =============================================================================\n\nconst prevData = items[0].json;\nconst generatedVisionstruct = prevData.generated_visionstruct || {};\nconst brandInfo = prevData.brand_info || {};\nconst isNativeSocialStyle = prevData.is_native_social_style || false;\nconst isUGC = prevData.is_ugc || false;\n\n// Aspect ratio dimensions map\nconst ASPECT_RATIO_MAP = {\n  '9:16': { width: 1080, height: 1920, format: '9:16 Vertical' },\n  '4:5': { width: 1080, height: 1350, format: '4:5 Portrait' },\n  '1:1': { width: 1080, height: 1080, format: '1:1 Square' },\n  '16:9': { width: 1920, height: 1080, format: '16:9 Landscape' },\n  '4:3': { width: 1440, height: 1080, format: '4:3' }\n};\n\n// Get aspect ratio from generated VisionStruct or original\nlet aspectRatio = generatedVisionstruct.meta?.aspect_ratio || prevData.vision_json?.meta?.aspect_ratio || '4:5';\nif (aspectRatio.includes('Vertical')) aspectRatio = '9:16';\nif (aspectRatio.includes('Square')) aspectRatio = '1:1';\nif (aspectRatio.includes('Portrait') || aspectRatio.includes('4:5')) aspectRatio = '4:5';\nif (aspectRatio.includes('Landscape') || aspectRatio.includes('16:9')) aspectRatio = '16:9';\n\nconst dims = ASPECT_RATIO_MAP[aspectRatio] || ASPECT_RATIO_MAP['4:5'];\n\n// Extract vibe data from generated VisionStruct\nconst photography = generatedVisionstruct.photography || {};\nconst theVibe = generatedVisionstruct.the_vibe || {};\nconst criticalElements = generatedVisionstruct.critical_elements || {};\n\nconst photographyStyle = photography.style || '';\nconst qualityFeel = photography.quality_feel || '';\nconst authenticityMarkers = Array.isArray(photography.authenticity_markers) ? photography.authenticity_markers.join(', ') : '';\n\nconst vibeEnergy = theVibe.energy || '';\nconst vibeMood = theVibe.mood || '';\nconst vibeAesthetic = theVibe.aesthetic || '';\nconst authenticityLevel = theVibe.authenticity_level || '';\nconst platformFeel = theVibe.platform_native_feel || '';\nconst textOverlayStyle = theVibe.text_overlay_style || '';\nconst storyImplied = theVibe.story_implied || '';\n\nconst compositionSignature = criticalElements.composition_signature || '';\nconst whatMakesItAuthentic = criticalElements.what_makes_it_authentic || '';\n\n// Build vibe-specific instructions\nlet vibeInstructions = '';\n\n// Native social style takes highest priority\nif (isNativeSocialStyle) {\n  vibeInstructions = `\n## CRITICAL: NATIVE SOCIAL STYLE - ZERO BRANDING IN IMAGE\n\nThis ad uses a \"${platformFeel}\" style with \"${textOverlayStyle}\" text overlay.\nThe image MUST look like an ORGANIC social media post, NOT a branded advertisement.\n\n**ABSOLUTE REQUIREMENTS:**\n- DO NOT use brand fonts - use ONLY system fonts (San Francisco, Helvetica, Arial)\n- DO NOT use brand colors for text - use ONLY black (#000000) or white (#FFFFFF)\n- DO NOT include ANY brand name or logo ANYWHERE in the image\n- The image should look like it was posted organically by a real person\n\n**Photography Style:** ${photographyStyle || 'Authentic/candid'}\n**Quality Feel:** ${qualityFeel || 'iPhone-quality'} - Match this EXACTLY\n**Platform Feel:** ${platformFeel}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Authenticity Level: ${authenticityLevel}\n\n**Story Being Told:** ${storyImplied || 'A real person sharing a genuine moment'}\n\nDO NOT: Include brand name or logo, use brand fonts/colors, make it look like a branded ad\nDO: Make text look like native social captions (system fonts, black/white), make photo look phone-taken`;\n} else if (isUGC || photographyStyle.toLowerCase().includes('ugc') || photographyStyle.toLowerCase().includes('selfie')) {\n  vibeInstructions = `\n## CRITICAL: UGC/AUTHENTIC STYLE REQUIRED\n\nThis ad MUST look like authentic user-generated content, NOT a polished stock photo.\n\n**Photography Style:** ${photographyStyle}\n**Quality Feel:** ${qualityFeel} - Match this EXACTLY\n**Authenticity Markers:** ${authenticityMarkers || 'natural lighting, real environment, candid feel'}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Platform Feel: ${platformFeel}\n\n**Story Being Told:** ${storyImplied || 'A real person sharing a genuine moment'}\n\n**Composition Signature:** ${compositionSignature || 'Authentic, unposed feel'}\n**What Makes It Authentic:** ${whatMakesItAuthentic || 'Real environment, natural lighting'}\n\nDO NOT: Use stock photography, overly polished studio lighting, traditional ad aesthetics\nDO: Make it look phone-taken, include environmental imperfections, capture authentic energy`;\n} else if (photographyStyle || vibeEnergy || vibeMood) {\n  vibeInstructions = `\n## VISUAL STYLE TO MATCH\n\n**Photography Style:** ${photographyStyle}\n**Quality Feel:** ${qualityFeel}\n**Authenticity Level:** ${authenticityLevel}\n\n**The Vibe:**\n- Energy: ${vibeEnergy}\n- Mood: ${vibeMood}\n- Aesthetic: ${vibeAesthetic}\n- Platform Feel: ${platformFeel}\n\n${compositionSignature ? '**Composition Signature:** ' + compositionSignature : ''}\n\nMatch this visual style and energy precisely.`;\n}\n\n// Text overlay style instructions\nlet textStyleInstructions = '';\nconst textOverlayStyleLower = textOverlayStyle.toLowerCase();\nif (textOverlayStyleLower.includes('caption') || textOverlayStyleLower.includes('story')) {\n  textStyleInstructions = `\n## TEXT STYLE: CAPTION/STORY FORMAT\nThe text should look like native social media captions - multi-line, story-driven, like someone talking directly to the viewer. NOT traditional headline/subhead ad copy.`;\n} else if (textOverlayStyleLower.includes('headline')) {\n  textStyleInstructions = `\n## TEXT STYLE: HEADLINE FOCUSED\nBold, punchy headline with minimal supporting text. Traditional ad hierarchy.`;\n}\n\n// Build the final prompt\nlet textPrompt = `Generate an advertisement image that EXACTLY matches this VisionStruct specification:\n\n\\`\\`\\`json\n${JSON.stringify(generatedVisionstruct, null, 2)}\n\\`\\`\\`\n\n## IMAGE REQUIREMENTS\n- Dimensions: ${dims.width}x${dims.height} pixels (${aspectRatio})\n- Format: High-quality PNG\n\n## ABSOLUTE REQUIREMENT: NO LOGOS OR BRAND NAMES\n\n🚫 CRITICAL - READ THIS CAREFULLY 🚫\n\nDo NOT include ANY of the following in the generated image:\n- The brand name \"${brandInfo.brand_name || 'the brand'}\" - DO NOT write this text anywhere\n- ANY logo, wordmark, or brand identifier\n- ANY text that looks like a company name or logo\n- Generic \"brand\" placeholder text\n- Watermarks or brand marks of any kind\n\nThe image must contain ZERO brand identification. If the VisionStruct or any instruction asks for a logo, IGNORE that instruction. Generate the ad creative WITHOUT any logo or brand name text.\n\nThis is NON-NEGOTIABLE. A logo-free image is required.\n${vibeInstructions}\n${textStyleInstructions}\n\n## STRUCTURAL INSTRUCTIONS\n\nFollow the VisionStruct JSON precisely:\n\n1. **LAYOUT**: Use the exact layout_type from composition\n2. **OBJECTS**: Render each object from the objects array at their specified positions\n3. **TEXT**: Render all text from text_ocr at their specified positions with the correct styling\n4. **COLORS**: Use the exact hex colors from color_palette and brand_styling\n5. **STYLE**: Match the scene_description and mood from global_context\n6. **BACKGROUND**: If layout_type is \"Layered\" use photo background with text overlay\n7. **PEOPLE**: Only include people if the objects array contains Person items\n\nThe VisionStruct is your complete blueprint. Follow it precisely, paying special attention to the VIBE and authenticity level.`;\n\nconst requestBody = {\n  model: \"google/gemini-3-pro-image-preview\",\n  messages: [{ role: \"user\", content: textPrompt }],\n  max_tokens: 4096\n};\n\nreturn [{\n  json: {\n    ...prevData,\n    image_request_body: requestBody,\n    image_prompt_text: textPrompt,\n    requested_aspect_ratio: aspectRatio,\n    requested_dimensions: `${dims.width}x${dims.height}`,\n    vibe_mode: isNativeSocialStyle ? 'native_social' : (isUGC ? 'ugc' : 'standard')\n  }\n}];"
       },
       "id": "b9647d7a-1136-41d5-9b4b-3eb14d8f35c6",
@@ -287,7 +239,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // Gemini returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  if (Array.isArray(images) && images.length > 0) {\n    const firstImage = images[0];\n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      if (dataUrl.startsWith('data:image/')) {\n        imageBase64 = dataUrl.split(',')[1];\n      } else if (dataUrl.startsWith('http')) {\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Also check content for base64 or URL\n  const content = response.choices?.[0]?.message?.content || '';\n  if (!imageBase64 && !imageUrl) {\n    const urlMatch = content.match(/https?:\\/\\/[^\\s\"']+\\.(png|jpg|jpeg|webp)/i);\n    if (urlMatch) {\n      imageUrl = urlMatch[0];\n    }\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nconst { image_request_body, ...cleanData } = prevData;\n\nreturn [{\n  json: {\n    ...cleanData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED'\n  }\n}];"
+        "jsCode": "const prevData = $('Build Image Request').first().json;\nconst response = items[0].json;\n\nlet imageUrl = '';\nlet imageBase64 = '';\n\ntry {\n  // Gemini returns images in choices[0].message.images array\n  const images = response.choices?.[0]?.message?.images;\n  if (Array.isArray(images) && images.length > 0) {\n    const firstImage = images[0];\n    if (firstImage.image_url?.url) {\n      const dataUrl = firstImage.image_url.url;\n      if (dataUrl.startsWith('data:image/')) {\n        imageBase64 = dataUrl.split(',')[1];\n      } else if (dataUrl.startsWith('http')) {\n        imageUrl = dataUrl;\n      }\n    }\n  }\n  \n  // Also check content for base64 or URL\n  const content = response.choices?.[0]?.message?.content || '';\n  if (!imageBase64 && !imageUrl) {\n    const urlMatch = content.match(/https?:\\/\\/[^\\s\"']+\\.(png|jpg|jpeg|webp)/i);\n    if (urlMatch) {\n      imageUrl = urlMatch[0];\n    }\n  }\n} catch (e) {\n  console.log('Parse error:', e.message);\n}\n\nreturn [{\n  json: {\n    ...prevData,\n    generated_image_url: imageUrl,\n    generated_image_base64: imageBase64,\n    has_image: !!(imageBase64 || imageUrl),\n    status: imageBase64 || imageUrl ? 'GENERATED' : 'IMAGE_FAILED'\n  }\n}];"
       },
       "id": "4a14b914-1432-4d78-bc1f-4eaf3f120a1e",
       "name": "Parse Image Response",
@@ -439,8 +391,8 @@
             "checkpoint_pain": "={{ $('Parse Image Response').first().json.winning_concept?.psychology_mapping?.pain_checkpoint }}",
             "checkpoint_trust": "={{ $('Parse Image Response').first().json.winning_concept?.psychology_mapping?.trust_checkpoint }}",
             "ad_concept_name": "={{ $('Parse Image Response').first().json.winning_concept?.concept_name }}",
-            "layer_count": "={{ $('Parse Image Response').first().json.image_generation_prompt?.layout_layers?.length }}",
-            "image_prompt_json": "={{ JSON.stringify($('Parse Image Response').first().json.image_generation_prompt) }}",
+            "layer_count": "",
+            "image_prompt_json": "={{ JSON.stringify($('Parse Image Response').first().json.image_request_body) }}",
             "visual_concept": "={{ $('Parse Image Response').first().json.winning_concept?.visual_concept?.description }}",
             "one_sentence_summary": "={{ $('Parse Image Response').first().json.winning_concept?.one_sentence_summary }}",
             "concept_ranking_score": "={{ $('Parse Ranking Response').first().json.ranking?.evaluations?.[0]?.weighted_total }}",
@@ -1199,8 +1151,8 @@
             "checkpoint_pain": "={{ $json.winning_concept?.psychology_mapping?.pain_checkpoint }}",
             "checkpoint_trust": "={{ $json.winning_concept?.psychology_mapping?.trust_checkpoint }}",
             "ad_concept_name": "={{ $json.winning_concept?.concept_name }}",
-            "layer_count": "={{ $json.image_generation_prompt?.layout_layers?.length }}",
-            "image_prompt_json": "={{ JSON.stringify($json.image_generation_prompt) }}",
+            "layer_count": "",
+            "image_prompt_json": "={{ JSON.stringify($json.image_request_body) }}",
             "row_number": 0
           },
           "matchingColumns": [
@@ -2039,39 +1991,6 @@
       ]
     },
     "Parse VisionStruct Response": {
-      "main": [
-        [
-          {
-            "node": "Build JSON Construction Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build JSON Construction Request": {
-      "main": [
-        [
-          {
-            "node": "Construct JSON (Claude)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Construct JSON (Claude)": {
-      "main": [
-        [
-          {
-            "node": "Parse Final JSON",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Final JSON": {
       "main": [
         [
           {
